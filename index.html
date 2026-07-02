@@ -7,7 +7,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
-<script src="https://accounts.google.com/gsi/client" async></script>
 <style>
   :root{
     --negro:#030707; --taupe:#A19487; --crema:#F4F2F1;
@@ -115,7 +114,13 @@
   <div class="mono">MS</div>
   <h1>Bandeja</h1>
   <p>Atención de pacientes · Dr. Miguel Soto Universe. Ingrese con su cuenta del equipo.</p>
-  <div id="gbtn"></div>
+  <button id="btn-login" style="display:flex;align-items:center;gap:10px;background:var(--negro);
+    color:var(--crema);border:none;border-radius:24px;padding:12px 22px;font-size:15px;
+    font-family:'Jost';cursor:pointer">
+    <span style="background:#fff;border-radius:50%;width:22px;height:22px;display:flex;
+      align-items:center;justify-content:center;color:#4285F4;font-weight:600">G</span>
+    Iniciar sesión con Google
+  </button>
   <div id="err"></div>
 </div>
 
@@ -164,29 +169,49 @@
 // ⚙️ Dominio del backend (Railway). Cámbialo si tu dominio cambia.
 const API = "https://chatbot-whatsapp-production-9bc5.up.railway.app";
 
-let idToken = null, activo = null, pollConv = null, pollHilo = null;
+let idToken = null, activo = null, pollConv = null, pollHilo = null, clientId = null;
 
-// ---- Arranque: pedir el Client ID e iniciar Google Sign-In ----
+// ---- Arranque ----
 window.addEventListener('load', async () => {
+  // ¿Regresamos de Google con el token en el hash de la URL?
+  const hash = new URLSearchParams(location.hash.slice(1));
+  const tokenDeHash = hash.get('id_token');
+  if (tokenDeHash) {
+    history.replaceState(null, '', location.pathname); // limpiar la URL
+    entrarConToken(tokenDeHash);
+    return;
+  }
+  // Si no, preparar el botón de login
   try {
     const cfg = await fetch(API + "/inbox/config").then(r => r.json());
     if (!cfg.google_client_id) { mostrarErr("Falta configurar GOOGLE_CLIENT_ID en el servidor."); return; }
-    const iniciar = () => {
-      google.accounts.id.initialize({ client_id: cfg.google_client_id, callback: onLogin });
-      google.accounts.id.renderButton(document.getElementById("gbtn"),
-        { theme: "filled_black", size: "large", text: "signin_with", shape: "pill", locale: "es" });
-    };
-    if (window.google && google.accounts) iniciar();
-    else { const t = setInterval(() => { if (window.google && google.accounts) { clearInterval(t); iniciar(); } }, 200); }
+    clientId = cfg.google_client_id;
+    document.getElementById("btn-login").onclick = irAGoogle;
   } catch (e) { mostrarErr("No se pudo contactar al servidor. Revise el dominio del backend."); }
 });
 
 function mostrarErr(m){ document.getElementById("err").textContent = m; }
 
-function onLogin(resp) {
-  idToken = resp.credential;
-  const p = JSON.parse(atob(idToken.split('.')[1]));
-  document.getElementById("usuario").textContent = p.email || "";
+// Redirección a Google (sin popup → sin problema de COOP)
+function irAGoogle() {
+  if (!clientId) return;
+  const nonce = Math.random().toString(36).slice(2) + Date.now().toString(36);
+  const redirectUri = location.origin + location.pathname;
+  const url = "https://accounts.google.com/o/oauth2/v2/auth"
+    + "?client_id=" + encodeURIComponent(clientId)
+    + "&redirect_uri=" + encodeURIComponent(redirectUri)
+    + "&response_type=id_token"
+    + "&scope=" + encodeURIComponent("openid email profile")
+    + "&nonce=" + encodeURIComponent(nonce)
+    + "&prompt=select_account";
+  location.href = url;
+}
+
+function entrarConToken(token) {
+  idToken = token;
+  let email = "";
+  try { email = JSON.parse(atob(token.split('.')[1])).email || ""; } catch (e) {}
+  document.getElementById("usuario").textContent = email;
   document.getElementById("login").hidden = true;
   document.getElementById("app").hidden = false;
   cargarConversaciones();
@@ -195,6 +220,7 @@ function onLogin(resp) {
 
 function salirPorSesion(status) {
   clearInterval(pollConv); clearInterval(pollHilo);
+  idToken = null;
   document.getElementById("app").hidden = true;
   document.getElementById("login").hidden = false;
   mostrarErr(status === 403
