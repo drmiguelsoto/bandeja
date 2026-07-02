@@ -1,364 +1,488 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Bandeja · Dr. Miguel Soto</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Bandeja · Michelle — Dr. Miguel Soto</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet" />
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
   :root{
-    --negro:#030707; --taupe:#A19487; --crema:#F4F2F1;
-    --taupe-suave:#EDE9E6; --linea:#E2DDD9; --texto:#2A2A28; --tenue:#8A847E;
+    --negro:#030707;
+    --taupe:#A19487;
+    --crema:#F4F2F1;
+    --linea:#E4DFDA;
+    --taupe-suave:#EFEAE5;
+    --ok:#2f7d5b;
+    --alerta:#b4562f;
+    --sombra:0 8px 30px rgba(3,7,7,.08);
   }
-  *{box-sizing:border-box}
-  html,body{height:100%;margin:0}
-  body{font-family:'Jost',sans-serif;color:var(--texto);background:var(--crema);
-    -webkit-font-smoothing:antialiased;font-weight:300}
-  h1,h2,h3,.serif{font-family:'Cormorant Garamond',serif;font-weight:500}
-  button{font-family:'Jost',sans-serif;cursor:pointer}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:'Jost',sans-serif;
+    color:var(--negro);
+    background:var(--crema);
+    -webkit-font-smoothing:antialiased;
+    line-height:1.45;
+  }
+  .titulo{font-family:'Cormorant Garamond',serif;letter-spacing:.3px}
+  .oculto{display:none !important}
 
-  /* ---------- Login ---------- */
-  #login{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;
-    justify-content:center;gap:22px;background:var(--crema);padding:24px;text-align:center}
-  .mono{width:64px;height:64px;border:1.5px solid var(--negro);border-radius:50%;
-    display:flex;align-items:center;justify-content:center;font-family:'Cormorant Garamond',serif;
-    font-size:26px;letter-spacing:1px;color:var(--negro)}
-  #login h1{font-size:34px;margin:0;color:var(--negro);letter-spacing:.5px}
-  #login p{margin:0;color:var(--tenue);font-size:15px;max-width:320px}
-  #err{color:#9b2c2c;font-size:14px;min-height:18px}
+  /* ---------- Monograma ---------- */
+  .mono{
+    width:40px;height:40px;border:1.5px solid var(--negro);
+    display:flex;align-items:center;justify-content:center;
+    font-family:'Cormorant Garamond',serif;font-weight:600;font-size:19px;
+    letter-spacing:1px;flex:0 0 auto;
+  }
 
-  /* ---------- App ---------- */
-  #app[hidden]{display:none}
+  /* ---------- LOGIN ---------- */
+  #login{
+    height:100%;display:flex;align-items:center;justify-content:center;padding:24px;
+  }
+  .login-card{
+    background:#fff;border:1px solid var(--linea);box-shadow:var(--sombra);
+    max-width:380px;width:100%;padding:44px 34px;text-align:center;
+  }
+  .login-card .mono{margin:0 auto 22px}
+  .login-card h1{font-size:30px;font-weight:600;margin-bottom:6px}
+  .login-card .sub{color:var(--taupe);font-size:14px;letter-spacing:.4px;margin-bottom:30px}
+  #gbtn{display:flex;justify-content:center;min-height:44px}
+  #login-msg{margin-top:18px;font-size:13px;min-height:18px}
+  #login-msg.err{color:var(--alerta)}
+  .cargando{color:var(--taupe);font-size:13px;letter-spacing:.5px}
+
+  /* ---------- APP ---------- */
   #app{height:100%;display:flex;flex-direction:column}
-  header.top{background:var(--negro);color:var(--crema);display:flex;align-items:center;
-    gap:14px;padding:12px 20px;flex:0 0 auto}
-  header.top .mono{width:34px;height:34px;border-color:var(--crema);color:var(--crema);font-size:15px}
-  header.top .marca{font-family:'Cormorant Garamond',serif;font-size:22px;letter-spacing:1px}
-  header.top .sep{color:var(--taupe)}
-  header.top .quien{margin-left:auto;font-size:13px;color:var(--taupe);font-weight:300}
+  header{
+    display:flex;align-items:center;gap:14px;
+    padding:12px 20px;background:#fff;border-bottom:1px solid var(--linea);
+    flex:0 0 auto;
+  }
+  header .brand{display:flex;align-items:center;gap:12px}
+  header .brand .mono{width:34px;height:34px;font-size:16px}
+  header h2{font-size:20px;font-weight:600}
+  header .quien{margin-left:auto;display:flex;align-items:center;gap:12px;font-size:13px;color:var(--taupe)}
+  header .quien img{width:28px;height:28px;border-radius:50%;border:1px solid var(--linea)}
+  .btn-salir{
+    background:none;border:1px solid var(--linea);color:var(--negro);
+    font-family:inherit;font-size:12px;letter-spacing:.5px;padding:6px 12px;
+    cursor:pointer;text-transform:uppercase;
+  }
+  .btn-salir:hover{background:var(--crema)}
 
-  .layout{flex:1;display:flex;min-height:0}
-  aside.lista{width:340px;flex:0 0 auto;background:#fff;border-right:1px solid var(--linea);
-    overflow-y:auto}
-  .lista .cab{padding:14px 18px;border-bottom:1px solid var(--linea);
-    font-family:'Cormorant Garamond',serif;font-size:20px;color:var(--negro);
-    display:flex;align-items:center;justify-content:space-between}
-  .lista .cab small{font-family:'Jost';font-size:11px;color:var(--tenue);font-weight:400}
-  .conv{padding:13px 18px;border-bottom:1px solid var(--linea);cursor:pointer;display:flex;gap:10px}
+  .cuerpo{flex:1 1 auto;display:flex;min-height:0}
+
+  /* Lista */
+  .lista{
+    width:340px;flex:0 0 auto;border-right:1px solid var(--linea);
+    background:#fff;overflow-y:auto;
+  }
+  .lista .titulo-col{
+    padding:14px 18px 10px;font-size:12px;letter-spacing:1.5px;
+    text-transform:uppercase;color:var(--taupe);
+    position:sticky;top:0;background:#fff;border-bottom:1px solid var(--linea);
+  }
+  .conv{
+    padding:14px 18px;border-bottom:1px solid var(--linea);cursor:pointer;
+    display:flex;flex-direction:column;gap:3px;position:relative;
+  }
   .conv:hover{background:var(--crema)}
   .conv.activa{background:var(--taupe-suave)}
-  .conv .info{flex:1;min-width:0}
-  .conv .nom{font-weight:500;font-size:14px;color:var(--negro);display:flex;align-items:center;gap:6px}
-  .conv .prev{font-size:12.5px;color:var(--tenue);white-space:nowrap;overflow:hidden;
-    text-overflow:ellipsis;margin-top:2px}
-  .conv .meta{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
-  .conv .hora{font-size:11px;color:var(--tenue)}
-  .badge{background:var(--negro);color:#fff;font-size:11px;min-width:19px;height:19px;
-    border-radius:10px;display:flex;align-items:center;justify-content:center;padding:0 5px}
-  .pill{font-size:10px;padding:2px 7px;border-radius:10px;text-transform:uppercase;letter-spacing:.5px}
-  .pill.humano{background:#d9edd9;color:#2f6b2f}
-  .pill.bloqueado{background:#f0d9d9;color:#9b2c2c}
-  .pill.bot{background:var(--taupe-suave);color:var(--taupe)}
-
-  main.conv-panel{flex:1;display:flex;flex-direction:column;min-width:0;background:var(--crema)}
-  .vacio{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
-    gap:10px;color:var(--tenue);text-align:center;padding:24px}
-  .vacio .mono{width:52px;height:52px;border-color:var(--linea);color:var(--taupe)}
-  .conv-cab{flex:0 0 auto;background:#fff;border-bottom:1px solid var(--linea);
-    padding:12px 20px;display:flex;align-items:center;gap:12px}
-  .conv-cab .volver{display:none;background:none;border:none;font-size:20px;color:var(--negro)}
-  .conv-cab .nombre{font-family:'Cormorant Garamond',serif;font-size:22px;color:var(--negro)}
-  .conv-cab .tel{font-size:12px;color:var(--tenue)}
-  .conv-cab .acciones{margin-left:auto}
-  .btn-dev{background:var(--negro);color:var(--crema);border:none;border-radius:20px;
-    padding:8px 16px;font-size:12.5px;letter-spacing:.3px}
-  .btn-dev:hover{background:#1a1a1a}
-
-  .hilo{flex:1;overflow-y:auto;padding:22px;display:flex;flex-direction:column;gap:12px}
-  .msg{max-width:74%;padding:10px 14px;border-radius:14px;font-size:14px;line-height:1.45;
-    white-space:pre-wrap;word-wrap:break-word}
-  .msg .rot{font-size:10.5px;text-transform:uppercase;letter-spacing:.6px;margin-bottom:3px;opacity:.7}
-  .msg.paciente{align-self:flex-start;background:#fff;border:1px solid var(--linea);
-    border-bottom-left-radius:4px}
-  .msg.michelle{align-self:flex-end;background:var(--taupe-suave);border-bottom-right-radius:4px}
-  .msg.agente{align-self:flex-end;background:var(--negro);color:var(--crema);border-bottom-right-radius:4px}
-  .msg.sistema{align-self:center;background:transparent;color:var(--tenue);font-size:12px;font-style:italic}
-  .msg .hora{font-size:10px;opacity:.6;margin-top:4px;text-align:right}
-
-  .responder{flex:0 0 auto;background:#fff;border-top:1px solid var(--linea);padding:12px 16px;
-    display:flex;gap:10px;align-items:flex-end}
-  .responder textarea{flex:1;resize:none;border:1px solid var(--linea);border-radius:12px;
-    padding:10px 14px;font-family:'Jost';font-size:14px;max-height:120px;min-height:44px;color:var(--texto)}
-  .responder textarea:focus{outline:none;border-color:var(--taupe)}
-  .responder .enviar{background:var(--taupe);color:#fff;border:none;border-radius:12px;
-    width:46px;height:44px;font-size:18px;flex:0 0 auto}
-  .responder .enviar:hover{background:#8f8377}
-  .responder .enviar:disabled{opacity:.5;cursor:default}
-  .responder .aviso{width:100%;font-size:11.5px;color:var(--tenue);padding:2px 4px 8px}
-
-  @media(max-width:720px){
-    aside.lista{width:100%}
-    #app.viendo aside.lista{display:none}
-    #app:not(.viendo) main.conv-panel{display:none}
-    .conv-cab .volver{display:block}
-    .msg{max-width:86%}
+  .conv .top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .conv .nombre{font-weight:500;font-size:15px}
+  .conv .hora{font-size:11px;color:var(--taupe);flex:0 0 auto}
+  .conv .prev{font-size:13px;color:#6b6259;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .conv .fila2{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:2px}
+  .badge{
+    font-size:10px;letter-spacing:.6px;text-transform:uppercase;
+    padding:2px 8px;border:1px solid var(--linea);color:var(--taupe);
   }
+  .badge.humano{border-color:var(--alerta);color:var(--alerta)}
+  .badge.michelle{border-color:var(--taupe);color:var(--taupe)}
+  .no-leidos{
+    background:var(--negro);color:#fff;font-size:11px;min-width:20px;height:20px;
+    border-radius:10px;display:flex;align-items:center;justify-content:center;padding:0 6px;
+  }
+  .vacio-lista{padding:30px 18px;color:var(--taupe);font-size:13px;text-align:center}
+
+  /* Hilo */
+  .hilo{flex:1 1 auto;display:flex;flex-direction:column;min-width:0;background:var(--crema)}
+  .hilo-head{
+    padding:14px 22px;background:#fff;border-bottom:1px solid var(--linea);
+    display:flex;align-items:center;gap:12px;flex:0 0 auto;
+  }
+  .hilo-head .nombre{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600}
+  .hilo-head .tel{font-size:12px;color:var(--taupe)}
+  .btn-devolver{
+    margin-left:auto;background:var(--negro);color:#fff;border:none;
+    font-family:inherit;font-size:12px;letter-spacing:.6px;text-transform:uppercase;
+    padding:9px 16px;cursor:pointer;
+  }
+  .btn-devolver:hover{background:#1a1f1f}
+  .btn-devolver:disabled{opacity:.4;cursor:default}
+
+  .mensajes{flex:1 1 auto;overflow-y:auto;padding:22px;display:flex;flex-direction:column;gap:12px}
+  .msg{max-width:74%;padding:10px 14px;font-size:14px;line-height:1.5;position:relative;word-wrap:break-word}
+  .msg .meta{font-size:10px;letter-spacing:.5px;text-transform:uppercase;margin-bottom:4px;opacity:.7}
+  .msg.paciente{align-self:flex-start;background:#fff;border:1px solid var(--linea)}
+  .msg.michelle{align-self:flex-end;background:var(--taupe-suave);border:1px solid var(--linea)}
+  .msg.michelle .meta{color:var(--taupe)}
+  .msg.agente{align-self:flex-end;background:var(--negro);color:#fff}
+  .msg.agente .meta{color:rgba(255,255,255,.7)}
+  .hilo-vacio{flex:1;display:flex;align-items:center;justify-content:center;color:var(--taupe);font-size:14px;text-align:center;padding:24px}
+
+  .responder{
+    flex:0 0 auto;border-top:1px solid var(--linea);background:#fff;
+    padding:14px 18px;display:flex;gap:10px;align-items:flex-end;
+  }
+  .responder textarea{
+    flex:1;resize:none;border:1px solid var(--linea);font-family:inherit;font-size:14px;
+    padding:10px 12px;min-height:44px;max-height:140px;background:var(--crema);color:var(--negro);
+  }
+  .responder textarea:focus{outline:none;border-color:var(--taupe)}
+  .btn-enviar{
+    background:var(--taupe);color:#fff;border:none;font-family:inherit;
+    font-size:13px;letter-spacing:.6px;text-transform:uppercase;padding:0 20px;height:44px;cursor:pointer;
+  }
+  .btn-enviar:hover{background:#8f8377}
+  .btn-enviar:disabled{opacity:.4;cursor:default}
+
+  .toast{
+    position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
+    background:var(--negro);color:#fff;padding:10px 18px;font-size:13px;
+    box-shadow:var(--sombra);z-index:50;opacity:0;transition:opacity .2s;pointer-events:none;
+  }
+  .toast.ver{opacity:1}
+
+  /* Móvil */
+  @media (max-width:760px){
+    .lista{width:100%}
+    .lista.tiene-activa{display:none}
+    .hilo{display:none}
+    .hilo.abierto{display:flex;position:fixed;inset:0;z-index:20}
+    .hilo-head .volver{display:inline-flex}
+  }
+  .volver{display:none;background:none;border:none;font-size:20px;cursor:pointer;color:var(--negro);padding:0 4px 0 0}
 </style>
 </head>
 <body>
 
-<!-- ===== LOGIN ===== -->
+<!-- ===================== LOGIN ===================== -->
 <div id="login">
-  <div class="mono">MS</div>
-  <h1>Bandeja</h1>
-  <p>Atención de pacientes · Dr. Miguel Soto Universe. Ingrese con su cuenta del equipo.</p>
-  <button id="btn-login" style="display:flex;align-items:center;gap:10px;background:var(--negro);
-    color:var(--crema);border:none;border-radius:24px;padding:12px 22px;font-size:15px;
-    font-family:'Jost';cursor:pointer">
-    <span style="background:#fff;border-radius:50%;width:22px;height:22px;display:flex;
-      align-items:center;justify-content:center;color:#4285F4;font-weight:600">G</span>
-    Iniciar sesión con Google
-  </button>
-  <div id="err"></div>
-</div>
-
-<!-- ===== APP ===== -->
-<div id="app" hidden>
-  <header class="top">
-    <div class="mono">MS</div>
-    <span class="marca">Bandeja</span>
-    <span class="sep">·</span>
-    <span style="font-size:13px;color:var(--taupe)">Dr. Miguel Soto</span>
-    <span class="quien" id="usuario"></span>
-  </header>
-  <div class="layout">
-    <aside class="lista">
-      <div class="cab">Conversaciones <small id="cont"></small></div>
-      <div id="conversaciones"></div>
-    </aside>
-    <main class="conv-panel">
-      <div class="vacio" id="vacio">
-        <div class="mono">MS</div>
-        <div class="serif" style="font-size:22px;color:var(--negro)">Seleccione una conversación</div>
-        <div style="font-size:13px">Los mensajes se actualizan solos.</div>
-      </div>
-      <div id="conv-abierta" hidden style="flex:1;display:flex;flex-direction:column;min-height:0">
-        <div class="conv-cab">
-          <button class="volver" onclick="cerrarConv()">‹</button>
-          <div>
-            <div class="nombre" id="conv-nombre"></div>
-            <div class="tel" id="conv-tel"></div>
-          </div>
-          <div class="acciones" id="conv-acciones"></div>
-        </div>
-        <div class="hilo" id="hilo"></div>
-        <div class="responder">
-          <div class="aviso">Su respuesta sale por WhatsApp con el número de la clínica y pausa a Michelle.</div>
-          <textarea id="texto" placeholder="Escriba su respuesta…" rows="1"
-            oninput="autosize(this)" onkeydown="teclas(event)"></textarea>
-          <button class="enviar" id="btn-enviar" onclick="responder()">➤</button>
-        </div>
-      </div>
-    </main>
+  <div class="login-card">
+    <div class="mono titulo">MS</div>
+    <h1 class="titulo">Bandeja Michelle</h1>
+    <div class="sub">Atención de pacientes · acceso del equipo</div>
+    <div id="gbtn"></div>
+    <div id="login-msg" class="cargando">Preparando acceso…</div>
   </div>
 </div>
 
+<!-- ===================== APP ===================== -->
+<div id="app" class="oculto">
+  <header>
+    <div class="brand">
+      <div class="mono titulo">MS</div>
+      <h2 class="titulo">Bandeja Michelle</h2>
+    </div>
+    <div class="quien">
+      <img id="u-foto" alt="" />
+      <span id="u-mail"></span>
+      <button class="btn-salir" onclick="salir()">Salir</button>
+    </div>
+  </header>
+
+  <div class="cuerpo">
+    <aside class="lista" id="lista">
+      <div class="titulo-col">Conversaciones</div>
+      <div id="lista-items"></div>
+    </aside>
+
+    <section class="hilo" id="hilo">
+      <div class="hilo-vacio" id="hilo-vacio">Selecciona una conversación para atenderla.</div>
+
+      <div id="hilo-activo" class="oculto" style="display:flex;flex-direction:column;flex:1;min-height:0">
+        <div class="hilo-head">
+          <button class="volver" onclick="cerrarHiloMovil()">‹</button>
+          <div>
+            <div class="nombre titulo" id="h-nombre"></div>
+            <div class="tel" id="h-tel"></div>
+          </div>
+          <button class="btn-devolver" id="btn-devolver" onclick="devolver()">Devolver a Michelle</button>
+        </div>
+        <div class="mensajes" id="mensajes"></div>
+        <div class="responder">
+          <textarea id="txt" placeholder="Escribe tu respuesta…" oninput="autoAlto(this)" onkeydown="teclaEnviar(event)"></textarea>
+          <button class="btn-enviar" id="btn-enviar" onclick="responder()">Enviar</button>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
 <script>
-// ⚙️ Dominio del backend (Railway). Cámbialo si tu dominio cambia.
+/* ============================================================
+   CONFIG
+   ============================================================ */
 const API = "https://chatbot-whatsapp-production-9bc5.up.railway.app";
+// Respaldo por si /inbox/config no responde:
+const CLIENT_ID_FALLBACK = "634352012698-b47t3ed3tvd4d1g7l30l68bd6e5s0ri4.apps.googleusercontent.com";
 
-let idToken = null, activo = null, pollConv = null, pollHilo = null, clientId = null;
+let ID_TOKEN = null;      // JWT de Google (se manda como Bearer)
+let CLIENT_ID = null;
+let activo = null;        // teléfono de la conversación abierta
+let tConvs = null, tHilo = null;
 
-// ---- Arranque ----
-window.addEventListener('load', async () => {
-  // ¿Regresamos de Google con el token en el hash de la URL?
-  const hash = new URLSearchParams(location.hash.slice(1));
-  const tokenDeHash = hash.get('id_token');
-  if (tokenDeHash) {
-    history.replaceState(null, '', location.pathname); // limpiar la URL
-    entrarConToken(tokenDeHash);
-    return;
+/* ============================================================
+   ARRANQUE — obtener client_id y montar GIS con FedCM
+   ============================================================ */
+window.addEventListener("load", init);
+
+async function init(){
+  try{
+    const r = await fetch(API + "/inbox/config");
+    if(r.ok){ const c = await r.json(); CLIENT_ID = c.clientId || c.client_id || c.CLIENT_ID; }
+  }catch(e){ /* usamos respaldo */ }
+  CLIENT_ID = CLIENT_ID || CLIENT_ID_FALLBACK;
+  esperarGIS();
+}
+
+function esperarGIS(){
+  if(!(window.google && google.accounts && google.accounts.id)){
+    return setTimeout(esperarGIS, 120);
   }
-  // Si no, preparar el botón de login
-  try {
-    const cfg = await fetch(API + "/inbox/config").then(r => r.json());
-    if (!cfg.google_client_id) { mostrarErr("Falta configurar GOOGLE_CLIENT_ID en el servidor."); return; }
-    clientId = cfg.google_client_id;
-    document.getElementById("btn-login").onclick = irAGoogle;
-  } catch (e) { mostrarErr("No se pudo contactar al servidor. Revise el dominio del backend."); }
-});
-
-function mostrarErr(m){ document.getElementById("err").textContent = m; }
-
-// Redirección a Google (sin popup → sin problema de COOP)
-function irAGoogle() {
-  if (!clientId) return;
-  const nonce = Math.random().toString(36).slice(2) + Date.now().toString(36);
-  const redirectUri = location.origin + location.pathname;
-  const url = "https://accounts.google.com/o/oauth2/v2/auth"
-    + "?client_id=" + encodeURIComponent(clientId)
-    + "&redirect_uri=" + encodeURIComponent(redirectUri)
-    + "&response_type=id_token"
-    + "&scope=" + encodeURIComponent("openid email profile")
-    + "&nonce=" + encodeURIComponent(nonce)
-    + "&prompt=select_account";
-  location.href = url;
+  google.accounts.id.initialize({
+    client_id: CLIENT_ID,
+    callback: onCredential,
+    auto_select: true,          // reingreso silencioso al recargar
+    cancel_on_tap_outside: false,
+    use_fedcm_for_prompt: true, // FedCM: sin popup, sin COOP
+    itp_support: true           // compatibilidad Safari
+  });
+  google.accounts.id.renderButton(
+    document.getElementById("gbtn"),
+    { theme:"outline", size:"large", type:"standard", text:"signin_with",
+      shape:"pill", logo_alignment:"center", width:300 }
+  );
+  google.accounts.id.prompt(); // intenta One Tap / FedCM
+  setMsg("Inicia sesión con tu cuenta del equipo.", false);
 }
 
-function entrarConToken(token) {
-  idToken = token;
-  let email = "";
-  try { email = JSON.parse(atob(token.split('.')[1])).email || ""; } catch (e) {}
-  document.getElementById("usuario").textContent = email;
-  document.getElementById("login").hidden = true;
-  document.getElementById("app").hidden = false;
+/* Google nos entrega el ID token aquí */
+function onCredential(resp){
+  if(!resp || !resp.credential){ setMsg("No se recibió la credencial. Intenta de nuevo.", true); return; }
+  ID_TOKEN = resp.credential;
+  const p = decodeJWT(ID_TOKEN) || {};
+  document.getElementById("u-mail").textContent = p.email || "";
+  const foto = document.getElementById("u-foto");
+  if(p.picture){ foto.src = p.picture; foto.style.display = ""; } else { foto.style.display = "none"; }
+  entrar();
+}
+
+function entrar(){
+  document.getElementById("login").classList.add("oculto");
+  document.getElementById("app").classList.remove("oculto");
   cargarConversaciones();
-  pollConv = setInterval(cargarConversaciones, 5000);
+  tConvs = setInterval(cargarConversaciones, 10000);
 }
 
-function salirPorSesion(status) {
-  clearInterval(pollConv); clearInterval(pollHilo);
-  idToken = null;
-  document.getElementById("app").hidden = true;
-  document.getElementById("login").hidden = false;
-  mostrarErr(status === 403
-    ? "Su cuenta no está autorizada para la bandeja."
-    : "Su sesión expiró. Ingrese de nuevo.");
+function salir(){
+  try{ google.accounts.id.disableAutoSelect(); }catch(e){}
+  ID_TOKEN = null; activo = null;
+  clearInterval(tConvs); clearInterval(tHilo);
+  location.reload();
 }
 
-async function api(path, opts = {}) {
-  opts.headers = Object.assign({ "Authorization": "Bearer " + idToken }, opts.headers || {});
-  const r = await fetch(API + path, opts);
-  if (r.status === 401 || r.status === 403) { salirPorSesion(r.status); throw new Error("auth"); }
-  return r.json();
+/* ============================================================
+   FETCH protegido
+   ============================================================ */
+async function api(path, opts={}){
+  const headers = Object.assign({ "Authorization":"Bearer "+ID_TOKEN }, opts.headers||{});
+  const r = await fetch(API + path, Object.assign({}, opts, { headers }));
+  if(r.status === 401 || r.status === 403){
+    sesionCaida(r.status);
+    throw new Error("auth");
+  }
+  if(!r.ok) throw new Error("HTTP "+r.status);
+  const ct = r.headers.get("content-type")||"";
+  return ct.includes("application/json") ? r.json() : r.text();
 }
 
-// ---- Lista de conversaciones ----
-function horaCorta(iso){
-  const d = new Date(iso); const hoy = new Date();
-  const mismo = d.toDateString() === hoy.toDateString();
-  return mismo ? d.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'})
-               : d.toLocaleDateString('es-MX',{day:'2-digit',month:'2-digit'});
+function sesionCaida(code){
+  clearInterval(tConvs); clearInterval(tHilo);
+  ID_TOKEN = null; activo = null;
+  document.getElementById("app").classList.add("oculto");
+  document.getElementById("login").classList.remove("oculto");
+  setMsg(code===403 ? "Tu correo no está autorizado en la bandeja." : "La sesión expiró. Vuelve a entrar.", true);
+  try{ google.accounts.id.prompt(); }catch(e){}
 }
 
-async function cargarConversaciones() {
-  let data; try { data = await api("/inbox/conversaciones"); } catch(e){ return; }
-  const cont = document.getElementById("conversaciones");
-  const convs = data.conversaciones || [];
-  document.getElementById("cont").textContent = convs.length ? convs.length + " chats" : "";
+/* ============================================================
+   CONVERSACIONES
+   ============================================================ */
+async function cargarConversaciones(){
+  try{
+    const data = await api("/inbox/conversaciones");
+    const arr = Array.isArray(data) ? data : (data.conversaciones || data.items || []);
+    pintarConversaciones(arr);
+  }catch(e){ if(e.message!=="auth") console.warn(e); }
+}
+
+function pintarConversaciones(arr){
+  const cont = document.getElementById("lista-items");
+  if(!arr.length){ cont.innerHTML = '<div class="vacio-lista">Sin conversaciones por ahora.</div>'; return; }
   cont.innerHTML = "";
-  if (!convs.length) {
-    cont.innerHTML = '<div style="padding:20px;color:var(--tenue);font-size:13px">Aún no hay conversaciones.</div>';
-    return;
-  }
-  for (const c of convs) {
+  arr.forEach(c=>{
+    const tel   = c.telefono || c.phone || c.id || "";
+    const nom   = c.nombre || c.name || tel;
+    const prev  = c.ultimo || c.ultimoMensaje || c.preview || "";
+    const estado= (c.estado || c.status || "").toLowerCase();
+    const noL   = c.noLeidos ?? c.unread ?? 0;
+    const hora  = fmtHora(c.ts || c.fecha || c.timestamp || c.updatedAt);
+
+    const esHumano = /human|pausa|agente|espera/.test(estado);
     const div = document.createElement("div");
-    div.className = "conv" + (c.telefono === activo ? " activa" : "");
-    div.onclick = () => abrirConv(c.telefono);
-    const nombre = c.nombre_perfil || c.telefono_completo || c.telefono;
-    const pill = c.estado === 'humano' ? '<span class="pill humano">humano</span>'
-               : c.estado === 'bloqueado' ? '<span class="pill bloqueado">bloqueado</span>' : '';
-    const badge = (c.no_leidos > 0) ? `<span class="badge">${c.no_leidos}</span>` : '';
-    const info = document.createElement("div"); info.className = "info";
-    const nom = document.createElement("div"); nom.className = "nom";
-    nom.textContent = nombre; nom.insertAdjacentHTML("beforeend", " " + pill);
-    const prev = document.createElement("div"); prev.className = "prev";
-    prev.textContent = c.ultimo_mensaje || "";
-    info.appendChild(nom); info.appendChild(prev);
-    const meta = document.createElement("div"); meta.className = "meta";
-    meta.innerHTML = `<span class="hora">${horaCorta(c.ultimo_en)}</span>${badge}`;
-    div.appendChild(info); div.appendChild(meta);
+    div.className = "conv" + (tel===activo ? " activa" : "");
+    div.onclick = ()=>abrirHilo(tel, nom);
+
+    const badge = esHumano
+      ? '<span class="badge humano">En espera</span>'
+      : '<span class="badge michelle">Michelle</span>';
+    const cntL = noL>0 ? '<span class="no-leidos">'+noL+'</span>' : '<span></span>';
+
+    div.innerHTML =
+      '<div class="top"><span class="nombre"></span><span class="hora">'+hora+'</span></div>'+
+      '<div class="prev"></div>'+
+      '<div class="fila2">'+badge+cntL+'</div>';
+    div.querySelector(".nombre").textContent = nom;
+    div.querySelector(".prev").textContent = prev;
     cont.appendChild(div);
-  }
+  });
 }
 
-// ---- Abrir una conversación ----
-async function abrirConv(telefono) {
-  activo = telefono;
-  document.getElementById("vacio").hidden = true;
-  document.getElementById("conv-abierta").hidden = false;
-  document.getElementById("app").classList.add("viendo");
-  clearInterval(pollHilo);
+/* ============================================================
+   HILO
+   ============================================================ */
+async function abrirHilo(tel, nom){
+  activo = tel;
+  document.getElementById("hilo-vacio").classList.add("oculto");
+  document.getElementById("hilo-activo").classList.remove("oculto");
+  document.getElementById("h-nombre").textContent = nom || tel;
+  document.getElementById("h-tel").textContent = tel;
+  document.getElementById("lista").classList.add("tiene-activa");
+  document.getElementById("hilo").classList.add("abierto");
+  document.querySelectorAll(".conv").forEach(x=>x.classList.remove("activa"));
   await cargarHilo();
-  pollHilo = setInterval(cargarHilo, 4000);
+  clearInterval(tHilo);
+  tHilo = setInterval(cargarHilo, 5000);
   cargarConversaciones();
 }
 
-function cerrarConv() {
-  activo = null; clearInterval(pollHilo);
-  document.getElementById("app").classList.remove("viendo");
-  document.getElementById("conv-abierta").hidden = true;
-  document.getElementById("vacio").hidden = false;
-  cargarConversaciones();
+async function cargarHilo(){
+  if(!activo) return;
+  try{
+    const data = await api("/inbox/hilo/" + encodeURIComponent(activo));
+    const msgs = Array.isArray(data) ? data : (data.mensajes || data.messages || []);
+    pintarMensajes(msgs);
+  }catch(e){ if(e.message!=="auth") console.warn(e); }
 }
 
-async function cargarHilo() {
-  if (!activo) return;
-  let data; try { data = await api("/inbox/hilo/" + encodeURIComponent(activo)); } catch(e){ return; }
-  const conv = data.conversacion || {};
-  const nombre = conv.nombre_perfil || conv.telefono_completo || activo;
-  document.getElementById("conv-nombre").textContent = nombre;
-  document.getElementById("conv-tel").textContent = conv.telefono_completo || "";
-  // botón devolver solo si está en modo humano
-  const acc = document.getElementById("conv-acciones");
-  acc.innerHTML = (conv.estado === 'humano')
-    ? '<button class="btn-dev" onclick="devolver()">Devolver a Michelle</button>' : '';
-
-  const hilo = document.getElementById("hilo");
-  const alFinal = (hilo.scrollHeight - hilo.scrollTop - hilo.clientHeight) < 60;
-  hilo.innerHTML = "";
-  for (const m of (data.mensajes || [])) {
+function pintarMensajes(msgs){
+  const cont = document.getElementById("mensajes");
+  const abajo = cont.scrollHeight - cont.scrollTop - cont.clientHeight < 60;
+  cont.innerHTML = "";
+  msgs.forEach(m=>{
+    const rolRaw = (m.rol || m.role || m.from || "").toLowerCase();
+    let clase = "paciente", etiqueta = "Paciente";
+    if(/michelle|bot|ai|assistant/.test(rolRaw)){ clase="michelle"; etiqueta="Michelle"; }
+    else if(/agente|agent|equipo|team|human/.test(rolRaw)){ clase="agente"; etiqueta="Equipo"; }
+    const texto = m.texto || m.text || m.body || m.mensaje || "";
+    const hora  = fmtHora(m.ts || m.fecha || m.timestamp || m.createdAt);
     const div = document.createElement("div");
-    div.className = "msg " + (m.rol || "sistema");
-    const rot = document.createElement("div"); rot.className = "rot";
-    rot.textContent = m.rol === 'paciente' ? 'Paciente' : m.rol === 'michelle' ? 'Michelle'
-                    : m.rol === 'agente' ? 'Equipo' : 'Sistema';
-    const cuerpo = document.createElement("div"); cuerpo.textContent = m.contenido || "";
-    const hr = document.createElement("div"); hr.className = "hora";
-    hr.textContent = horaCorta(m.creado_en);
-    if (m.rol !== 'sistema') div.appendChild(rot);
-    div.appendChild(cuerpo); div.appendChild(hr);
-    hilo.appendChild(div);
-  }
-  if (alFinal) hilo.scrollTop = hilo.scrollHeight;
+    div.className = "msg " + clase;
+    const meta = document.createElement("div"); meta.className="meta"; meta.textContent = etiqueta + (hora?" · "+hora:"");
+    const cuerpo = document.createElement("div"); cuerpo.textContent = texto;
+    div.appendChild(meta); div.appendChild(cuerpo);
+    cont.appendChild(div);
+  });
+  if(abajo) cont.scrollTop = cont.scrollHeight;
 }
 
-// ---- Responder ----
-function autosize(t){ t.style.height='auto'; t.style.height=Math.min(t.scrollHeight,120)+'px'; }
-function teclas(e){ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); responder(); } }
-
-async function responder() {
-  const ta = document.getElementById("texto");
+async function responder(){
+  const ta = document.getElementById("txt");
   const texto = ta.value.trim();
-  if (!texto || !activo) return;
+  if(!texto || !activo) return;
   const btn = document.getElementById("btn-enviar");
   btn.disabled = true;
-  try {
+  try{
     await api("/inbox/responder", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
       body: JSON.stringify({ telefono: activo, texto })
     });
-    ta.value = ""; autosize(ta);
+    ta.value=""; autoAlto(ta);
     await cargarHilo();
-  } catch (e) {
-    alert("No se pudo enviar el mensaje. Intente de nuevo.");
-  } finally { btn.disabled = false; }
+    cargarConversaciones();
+  }catch(e){
+    if(e.message!=="auth") toast("No se pudo enviar. Intenta de nuevo.");
+  }finally{ btn.disabled = false; }
 }
 
-async function devolver() {
-  if (!activo) return;
-  if (!confirm("¿Devolver esta conversación a Michelle?")) return;
-  try {
+async function devolver(){
+  if(!activo) return;
+  if(!confirm("¿Devolver esta conversación a Michelle?")) return;
+  const btn = document.getElementById("btn-devolver");
+  btn.disabled = true;
+  try{
     await api("/inbox/devolver", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
       body: JSON.stringify({ telefono: activo })
     });
+    toast("Control devuelto a Michelle.");
     await cargarHilo();
-  } catch (e) { alert("No se pudo devolver el control."); }
+    cargarConversaciones();
+  }catch(e){
+    if(e.message!=="auth") toast("No se pudo devolver el control.");
+  }finally{ btn.disabled = false; }
+}
+
+/* ============================================================
+   UI helpers
+   ============================================================ */
+function cerrarHiloMovil(){
+  activo = null; clearInterval(tHilo);
+  document.getElementById("lista").classList.remove("tiene-activa");
+  document.getElementById("hilo").classList.remove("abierto");
+}
+function autoAlto(el){ el.style.height="auto"; el.style.height=Math.min(el.scrollHeight,140)+"px"; }
+function teclaEnviar(e){ if(e.key==="Enter" && !e.shiftKey){ e.preventDefault(); responder(); } }
+function setMsg(t, err){ const m=document.getElementById("login-msg"); m.textContent=t; m.className = err?"err":"cargando"; }
+let tToast=null;
+function toast(t){ const el=document.getElementById("toast"); el.textContent=t; el.classList.add("ver"); clearTimeout(tToast); tToast=setTimeout(()=>el.classList.remove("ver"),2600); }
+
+function decodeJWT(tok){
+  try{
+    const b = tok.split(".")[1].replace(/-/g,"+").replace(/_/g,"/");
+    const json = decodeURIComponent(atob(b).split("").map(c=>"%"+("00"+c.charCodeAt(0).toString(16)).slice(-2)).join(""));
+    return JSON.parse(json);
+  }catch(e){ return null; }
+}
+function fmtHora(v){
+  if(!v) return "";
+  let d = (typeof v==="number") ? new Date(v>1e12?v:v*1000) : new Date(v);
+  if(isNaN(d)) return "";
+  const hoy = new Date();
+  const mismoDia = d.toDateString()===hoy.toDateString();
+  return mismoDia
+    ? d.toLocaleTimeString("es-MX",{hour:"2-digit",minute:"2-digit"})
+    : d.toLocaleDateString("es-MX",{day:"2-digit",month:"2-digit"});
 }
 </script>
 </body>
