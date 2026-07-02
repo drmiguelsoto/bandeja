@@ -179,6 +179,7 @@
     <div class="sub">Atención de pacientes · acceso del equipo</div>
     <div id="gbtn"></div>
     <div id="login-msg" class="cargando">Preparando acceso…</div>
+    <div style="margin-top:22px;font-size:11px;letter-spacing:1px;color:var(--taupe);opacity:.7">v2 · FedCM</div>
   </div>
 </div>
 
@@ -304,11 +305,12 @@ function salir(){
    ============================================================ */
 async function api(path, opts={}){
   const headers = Object.assign({ "Authorization":"Bearer "+ID_TOKEN }, opts.headers||{});
-  const r = await fetch(API + path, Object.assign({}, opts, { headers }));
+  const r = await fetch(API + path, Object.assign({ cache:"no-store" }, opts, { headers }));
   if(r.status === 401 || r.status === 403){
     sesionCaida(r.status);
     throw new Error("auth");
   }
+  if(r.status === 304) return null;           // sin cambios: no rompemos
   if(!r.ok) throw new Error("HTTP "+r.status);
   const ct = r.headers.get("content-type")||"";
   return ct.includes("application/json") ? r.json() : r.text();
@@ -329,6 +331,7 @@ function sesionCaida(code){
 async function cargarConversaciones(){
   try{
     const data = await api("/inbox/conversaciones");
+    if(data === null) return;                  // 304: nada que repintar
     const arr = Array.isArray(data) ? data : (data.conversaciones || data.items || []);
     pintarConversaciones(arr);
   }catch(e){ if(e.message!=="auth") console.warn(e); }
@@ -388,6 +391,7 @@ async function cargarHilo(){
   if(!activo) return;
   try{
     const data = await api("/inbox/hilo/" + encodeURIComponent(activo));
+    if(data === null) return;                  // 304: sin cambios
     const msgs = Array.isArray(data) ? data : (data.mensajes || data.messages || []);
     pintarMensajes(msgs);
   }catch(e){ if(e.message!=="auth") console.warn(e); }
