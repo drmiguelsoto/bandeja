@@ -179,7 +179,7 @@
     <div class="sub">Atención de pacientes · acceso del equipo</div>
     <div id="gbtn"></div>
     <div id="login-msg" class="cargando">Preparando acceso…</div>
-    <div style="margin-top:22px;font-size:11px;letter-spacing:1px;color:var(--taupe);opacity:.7">v2 · FedCM</div>
+    <div style="margin-top:22px;font-size:11px;letter-spacing:1px;color:var(--taupe);opacity:.7">v3 · FedCM</div>
   </div>
 </div>
 
@@ -248,7 +248,7 @@ window.addEventListener("load", init);
 async function init(){
   try{
     const r = await fetch(API + "/inbox/config");
-    if(r.ok){ const c = await r.json(); CLIENT_ID = c.clientId || c.client_id || c.CLIENT_ID; }
+    if(r.ok){ const c = await r.json(); CLIENT_ID = c.google_client_id || c.clientId || c.client_id || c.CLIENT_ID; }
   }catch(e){ /* usamos respaldo */ }
   CLIENT_ID = CLIENT_ID || CLIENT_ID_FALLBACK;
   esperarGIS();
@@ -343,8 +343,8 @@ function pintarConversaciones(arr){
   cont.innerHTML = "";
   arr.forEach(c=>{
     const tel   = c.telefono || c.phone || c.id || "";
-    const nom   = c.nombre || c.name || tel;
-    const prev  = c.ultimo || c.ultimoMensaje || c.preview || "";
+    const nom   = c.nombre || c.name || c.perfil || tel;
+    const prev  = c.ultimo || c.ultimoMensaje || c.preview || c.ultimoTexto || campoTexto(c.ultimoMensajeObj||{}) || "";
     const estado= (c.estado || c.status || "").toLowerCase();
     const noL   = c.noLeidos ?? c.unread ?? 0;
     const hora  = fmtHora(c.ts || c.fecha || c.timestamp || c.updatedAt);
@@ -406,7 +406,7 @@ function pintarMensajes(msgs){
     let clase = "paciente", etiqueta = "Paciente";
     if(/michelle|bot|ai|assistant/.test(rolRaw)){ clase="michelle"; etiqueta="Michelle"; }
     else if(/agente|agent|equipo|team|human/.test(rolRaw)){ clase="agente"; etiqueta="Equipo"; }
-    const texto = m.texto || m.text || m.body || m.mensaje || "";
+    const texto = campoTexto(m);
     const hora  = fmtHora(m.ts || m.fecha || m.timestamp || m.createdAt);
     const div = document.createElement("div");
     div.className = "msg " + clase;
@@ -470,6 +470,20 @@ function teclaEnviar(e){ if(e.key==="Enter" && !e.shiftKey){ e.preventDefault();
 function setMsg(t, err){ const m=document.getElementById("login-msg"); m.textContent=t; m.className = err?"err":"cargando"; }
 let tToast=null;
 function toast(t){ const el=document.getElementById("toast"); el.textContent=t; el.classList.add("ver"); clearTimeout(tToast); tToast=setTimeout(()=>el.classList.remove("ver"),2600); }
+
+/* Encuentra el texto del mensaje sin importar cómo se llame el campo en el backend */
+function campoTexto(m){
+  if(!m || typeof m!=="object") return "";
+  const c = m.texto ?? m.contenido ?? m.content ?? m.text ?? m.body ?? m.mensaje ?? m.msg ?? m.message;
+  if(c != null && String(c).trim() !== "") return String(c);
+  const meta = /^(rol|role|from|estado|status|telefono|phone|numero|id|_id|fecha|ts|timestamp|created_?at|updated_?at|hora|nombre|name|perfil|leido|no_?leidos|unread|tipo|type|direction|wa_?id|sid)$/i;
+  for(const k in m){
+    if(meta.test(k)) continue;
+    const v = m[k];
+    if(typeof v==="string" && v.trim()!=="") return v;
+  }
+  return "";
+}
 
 function decodeJWT(tok){
   try{
