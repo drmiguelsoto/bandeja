@@ -118,10 +118,16 @@
   .hilo-head .nombre{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600}
   .hilo-head .tel{font-size:12px;color:var(--taupe)}
   .btn-devolver{
-    margin-left:auto;background:var(--negro);color:#fff;border:none;
+    background:var(--negro);color:#fff;border:none;
     font-family:inherit;font-size:12px;letter-spacing:.6px;text-transform:uppercase;
     padding:9px 16px;cursor:pointer;
   }
+  .btn-idioma{
+    margin-left:auto;background:none;border:1px solid var(--linea);color:var(--taupe);
+    font-family:inherit;font-size:11px;letter-spacing:.5px;text-transform:uppercase;
+    padding:8px 12px;cursor:pointer;
+  }
+  .btn-idioma:hover{background:var(--crema);color:var(--negro)}
   .btn-devolver:hover{background:#1a1f1f}
   .btn-devolver:disabled{opacity:.4;cursor:default}
 
@@ -179,7 +185,7 @@
     <div class="sub">Atención de pacientes · acceso del equipo</div>
     <div id="gbtn"></div>
     <div id="login-msg" class="cargando">Preparando acceso…</div>
-    <div style="margin-top:22px;font-size:11px;letter-spacing:1px;color:var(--taupe);opacity:.7">v3 · FedCM</div>
+    <div style="margin-top:22px;font-size:11px;letter-spacing:1px;color:var(--taupe);opacity:.7">v4 · FedCM · ES</div>
   </div>
 </div>
 
@@ -213,6 +219,7 @@
             <div class="nombre titulo" id="h-nombre"></div>
             <div class="tel" id="h-tel"></div>
           </div>
+          <button class="btn-idioma" id="btn-idioma" onclick="toggleIdioma()">Ver original</button>
           <button class="btn-devolver" id="btn-devolver" onclick="devolver()">Devolver a Michelle</button>
         </div>
         <div class="mensajes" id="mensajes"></div>
@@ -397,25 +404,63 @@ async function cargarHilo(){
   }catch(e){ if(e.message!=="auth") console.warn(e); }
 }
 
+const cacheTrad = new Map();   // texto original -> español
+let verOriginal = false;       // toggle global de la bandeja
+
 function pintarMensajes(msgs){
   const cont = document.getElementById("mensajes");
   const abajo = cont.scrollHeight - cont.scrollTop - cont.clientHeight < 60;
   cont.innerHTML = "";
+  const originales = [];
   msgs.forEach(m=>{
     const rolRaw = (m.rol || m.role || m.from || "").toLowerCase();
     let clase = "paciente", etiqueta = "Paciente";
     if(/michelle|bot|ai|assistant/.test(rolRaw)){ clase="michelle"; etiqueta="Michelle"; }
     else if(/agente|agent|equipo|team|human/.test(rolRaw)){ clase="agente"; etiqueta="Equipo"; }
-    const texto = campoTexto(m);
+    const orig = campoTexto(m);
+    if(orig) originales.push(orig);
+    const es = cacheTrad.get(orig);
+    const traducido = !!es && es.trim() !== orig.trim();
+    const mostrado = verOriginal ? orig : (es || orig);
     const hora  = fmtHora(m.ts || m.fecha || m.timestamp || m.createdAt);
+
     const div = document.createElement("div");
     div.className = "msg " + clase;
-    const meta = document.createElement("div"); meta.className="meta"; meta.textContent = etiqueta + (hora?" · "+hora:"");
-    const cuerpo = document.createElement("div"); cuerpo.textContent = texto;
+    const meta = document.createElement("div"); meta.className="meta";
+    meta.textContent = etiqueta + (hora?" · "+hora:"") + (traducido && !verOriginal ? " · traducido" : "");
+    const cuerpo = document.createElement("div"); cuerpo.textContent = mostrado;
     div.appendChild(meta); div.appendChild(cuerpo);
     cont.appendChild(div);
   });
   if(abajo) cont.scrollTop = cont.scrollHeight;
+
+  // Traduce en segundo plano lo que falte y repinta una vez
+  traducirPendientes(originales).then(cambio=>{ if(cambio) pintarMensajes(msgs); });
+}
+
+async function traducirPendientes(textos){
+  const faltan = [...new Set(textos.filter(t=>t && !cacheTrad.has(t)))];
+  if(!faltan.length) return false;
+  try{
+    const r = await api("/inbox/traducir", {
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({ textos: faltan })
+    });
+    const trad = r && r.traducciones;
+    if(Array.isArray(trad) && trad.length===faltan.length){
+      faltan.forEach((t,i)=> cacheTrad.set(t, trad[i] || t));
+      return true;
+    }
+  }catch(e){ /* silencioso: si falla se queda el original */ }
+  return false;
+}
+
+function toggleIdioma(){
+  verOriginal = !verOriginal;
+  const b = document.getElementById("btn-idioma");
+  if(b) b.textContent = verOriginal ? "Ver traducción" : "Ver original";
+  if(activo) cargarHilo();
 }
 
 async function responder(){
