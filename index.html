@@ -185,7 +185,7 @@
     <div class="sub">Atención de pacientes · acceso del equipo</div>
     <div id="gbtn"></div>
     <div id="login-msg" class="cargando">Preparando acceso…</div>
-    <div style="margin-top:22px;font-size:11px;letter-spacing:1px;color:var(--taupe);opacity:.7">v4 · FedCM · ES</div>
+    <div style="margin-top:22px;font-size:11px;letter-spacing:1px;color:var(--taupe);opacity:.7">v5 · FedCM · ES</div>
   </div>
 </div>
 
@@ -245,7 +245,9 @@ const CLIENT_ID_FALLBACK = "634352012698-b47t3ed3tvd4d1g7l30l68bd6e5s0ri4.apps.g
 let ID_TOKEN = null;      // JWT de Google (se manda como Bearer)
 let CLIENT_ID = null;
 let activo = null;        // teléfono de la conversación abierta
-let tConvs = null, tHilo = null;
+let tConvs = null, tHilo = null, tRefresh = null;
+let reautenticando = false;
+let fallosAuthSeguidos = 0;   // corta el polling si no logramos renovar
 
 /* ============================================================
    ARRANQUE — obtener client_id y montar GIS con FedCM
@@ -282,35 +284,83 @@ function esperarGIS(){
   setMsg("Inicia sesión con tu cuenta del equipo.", false);
 }
 
-/* Google nos entrega el ID token aquí */
+/* Google nos entrega el ID token aquí (login inicial Y cada refresco) */
 function onCredential(resp){
   if(!resp || !resp.credential){ setMsg("No se recibió la credencial. Intenta de nuevo.", true); return; }
   ID_TOKEN = resp.credential;
+  reautenticando = false;
+  fallosAuthSeguidos = 0;
   const p = decodeJWT(ID_TOKEN) || {};
   document.getElementById("u-mail").textContent = p.email || "";
   const foto = document.getElementById("u-foto");
   if(p.picture){ foto.src = p.picture; foto.style.display = ""; } else { foto.style.display = "none"; }
+  programarRefresco();   // renueva el token ANTES de que venza
   entrar();
 }
 
 function entrar(){
   document.getElementById("login").classList.add("oculto");
   document.getElementById("app").classList.remove("oculto");
+  detenerPolling();                 // evita apilar timers en cada re-login
   cargarConversaciones();
   tConvs = setInterval(cargarConversaciones, 10000);
+  if(activo){                       // si había un hilo abierto, reanuda su polling
+    cargarHilo();
+    tHilo = setInterval(cargarHilo, 5000);
+  }
+}
+
+function detenerPolling(){
+  clearInterval(tConvs); tConvs = null;
+  clearInterval(tHilo);  tHilo  = null;
 }
 
 function salir(){
   try{ google.accounts.id.disableAutoSelect(); }catch(e){}
   ID_TOKEN = null; activo = null;
-  clearInterval(tConvs); clearInterval(tHilo);
+  detenerPolling(); clearTimeout(tRefresh);
   location.reload();
 }
 
 /* ============================================================
-   FETCH protegido
+   SESIÓN — validez del token y renovación proactiva
+   ============================================================ */
+function tokenExpMs(){
+  const p = decodeJWT(ID_TOKEN);
+  return (p && p.exp) ? p.exp * 1000 : 0;
+}
+// Token bueno si existe y le quedan más de 60s de vida.
+function tokenValido(){
+  return !!ID_TOKEN && Date.now() < (tokenExpMs() - 60000);
+}
+
+// Pide a Google una credencial fresca, con candado para no spamear el prompt.
+function pedirReauth(){
+  if(reautenticando) return;
+  reautenticando = true;
+  try{ google.accounts.id.prompt(); }catch(e){}
+  // Si en 8s no llegó credencial nueva, soltamos el candado para poder reintentar.
+  setTimeout(()=>{ reautenticando = false; }, 8000);
+}
+
+// Programa la renovación ~2 min antes de que el token venza.
+function programarRefresco(){
+  clearTimeout(tRefresh);
+  const ms = tokenExpMs() - Date.now() - 120000;
+  if(ms > 0) tRefresh = setTimeout(pedirReauth, ms);
+  else pedirReauth();
+}
+
+/* ============================================================
+   FETCH protegido — NUNCA manda una petición con token vencido/nulo
    ============================================================ */
 async function api(path, opts={}){
+  // Candado central: sin token válido no golpeamos al servidor.
+  if(!tokenValido()){
+    detenerPolling();     // dejamos de martillar mientras renovamos
+    pedirReauth();
+    throw new Error("auth");
+  }
   const headers = Object.assign({ "Authorization":"Bearer "+ID_TOKEN }, opts.headers||{});
   const r = await fetch(API + path, Object.assign({ cache:"no-store" }, opts, { headers }));
   if(r.status === 401 || r.status === 403){
@@ -324,12 +374,25 @@ async function api(path, opts={}){
 }
 
 function sesionCaida(code){
-  clearInterval(tConvs); clearInterval(tHilo);
-  ID_TOKEN = null; activo = null;
-  document.getElementById("app").classList.add("oculto");
-  document.getElementById("login").classList.remove("oculto");
-  setMsg(code===403 ? "Tu correo no está autorizado en la bandeja." : "La sesión expiró. Vuelve a entrar.", true);
-  try{ google.accounts.id.prompt(); }catch(e){}
+  detenerPolling();
+  ID_TOKEN = null;
+  fallosAuthSeguidos++;
+  if(code === 403){
+    // Correo no autorizado: no tiene caso reintentar en bucle.
+    document.getElementById("app").classList.add("oculto");
+    document.getElementById("login").classList.remove("oculto");
+    setMsg("Tu correo no está autorizado en la bandeja.", true);
+    return;
+  }
+  // 401: token vencido/ inválido. Intentamos renovar en silencio hasta 3 veces;
+  // si no se logra, mostramos login y esperamos acción del usuario (sin flood).
+  if(fallosAuthSeguidos <= 3){
+    pedirReauth();
+  }else{
+    document.getElementById("app").classList.add("oculto");
+    document.getElementById("login").classList.remove("oculto");
+    setMsg("La sesión expiró. Vuelve a entrar.", true);
+  }
 }
 
 /* ============================================================
@@ -439,7 +502,10 @@ function pintarMensajes(msgs){
 }
 
 async function traducirPendientes(textos){
-  const faltan = [...new Set(textos.filter(t=>t && !cacheTrad.has(t)))];
+  // Solo traducimos lo que NO está ya en español y aún no tenemos.
+  const faltan = [...new Set(textos.filter(t=> t && !cacheTrad.has(t) && !pareceEspanol(t)))];
+  // Los que ya están en español los damos por "traducidos" (a sí mismos), para no repreguntar.
+  textos.forEach(t=>{ if(t && !cacheTrad.has(t) && pareceEspanol(t)) cacheTrad.set(t, t); });
   if(!faltan.length) return false;
   try{
     const r = await api("/inbox/traducir", {
@@ -449,11 +515,22 @@ async function traducirPendientes(textos){
     });
     const trad = r && r.traducciones;
     if(Array.isArray(trad) && trad.length===faltan.length){
-      faltan.forEach((t,i)=> cacheTrad.set(t, trad[i] || t));
+      faltan.forEach((t,i)=>{
+        const val = (trad[i] && String(trad[i]).trim()) ? String(trad[i]) : t; // nunca vacío
+        cacheTrad.set(t, val);
+      });
       return true;
     }
   }catch(e){ /* silencioso: si falla se queda el original */ }
   return false;
+}
+
+// Heurística ligera: ¿el texto ya viene en español? (evita traducir y evita el "¿?")
+function pareceEspanol(t){
+  const s = (t||"").toLowerCase();
+  if(!s.trim()) return true;
+  if(/[áéíóúñ¿¡]/.test(s)) return true;
+  return /\b(hola|precio|cita|gracias|quiero|cuánto|cuanto|dame|buenas|buenos|por favor|información|informacion|agendar|valoración|valoracion|cuello|cara|rostro|de|el|la|los|las|una|para|con|qué|que|cómo|como)\b/.test(s);
 }
 
 function toggleIdioma(){
@@ -506,7 +583,7 @@ async function devolver(){
    UI helpers
    ============================================================ */
 function cerrarHiloMovil(){
-  activo = null; clearInterval(tHilo);
+  activo = null; clearInterval(tHilo); tHilo = null;
   document.getElementById("lista").classList.remove("tiene-activa");
   document.getElementById("hilo").classList.remove("abierto");
 }
@@ -550,4 +627,3 @@ function fmtHora(v){
 </script>
 </body>
 </html>
-
