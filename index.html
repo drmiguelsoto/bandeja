@@ -4,6 +4,13 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <meta name="theme-color" content="#075E54" />
+<link rel="manifest" href="manifest.json" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<link rel="icon" type="image/png" href="icon-192.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Michelle" />
+<meta name="mobile-web-app-capable" content="yes" />
 <title>Bandeja · Michelle</title>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
@@ -191,6 +198,14 @@ let reautenticando=false, fallosAuthSeguidos=0;
 let ULTIMAS=[], filtro="";
 
 window.addEventListener("load", init);
+
+/* PWA: registra el service worker (habilita instalar como app) */
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("sw.js").catch((e) => console.warn("SW:", e));
+  });
+}
+
 async function init(){
   try{ const r=await fetch(API+"/inbox/config"); if(r.ok){ const c=await r.json(); CLIENT_ID=c.google_client_id||c.clientId||c.client_id||c.CLIENT_ID; } }catch(e){}
   CLIENT_ID=CLIENT_ID||CLIENT_ID_FALLBACK; esperarGIS();
