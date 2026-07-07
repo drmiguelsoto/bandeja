@@ -32,6 +32,12 @@
   body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--wa-txt);background:#D1D7DB;-webkit-font-smoothing:antialiased;line-height:1.4}
   .oculto{display:none !important}
 
+  /* iOS PWA: respeta la zona segura de arriba (muesca/hora/señal) para que la
+     barra superior no quede tapada y la flecha de regresar sea alcanzable. */
+  .lista-head, .conv-head, .chat-vacio{ padding-top:calc(env(safe-area-inset-top, 0px) + 9px); }
+  .lista-head, .conv-head{ height:auto; min-height:60px; }
+  #login{ padding-top:calc(env(safe-area-inset-top, 0px) + 20px); }
+
   #login{height:100%;display:flex;align-items:center;justify-content:center;padding:20px;background:var(--wa-header)}
   .login-card{background:#fff;border-radius:14px;max-width:360px;width:100%;padding:40px 30px;text-align:center;box-shadow:0 12px 40px rgba(0,0,0,.2)}
   .login-logo{width:64px;height:64px;border-radius:50%;background:var(--wa-header);display:flex;align-items:center;justify-content:center;margin:0 auto 18px}
