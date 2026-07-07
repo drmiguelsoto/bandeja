@@ -96,6 +96,7 @@
   .conv .nombre{font-weight:500;font-size:15px}
   .conv .hora{font-size:11px;color:var(--taupe);flex:0 0 auto}
   .conv .prev{font-size:13px;color:#6b6259;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .conv .subtel{font-size:11px;color:var(--taupe);letter-spacing:.3px;margin-top:-1px}
   .conv .fila2{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:2px}
   .badge{
     font-size:10px;letter-spacing:.6px;text-transform:uppercase;
@@ -413,7 +414,7 @@ function pintarConversaciones(arr){
   cont.innerHTML = "";
   arr.forEach(c=>{
     const tel   = c.telefono || c.phone || c.id || "";
-    const nom   = c.nombre || c.name || c.perfil || tel;
+    const nom   = c.nombre_perfil || c.nombre || c.name || c.perfil || tel;
     const prev  = c.ultimo || c.ultimoMensaje || c.preview || c.ultimoTexto || campoTexto(c.ultimoMensajeObj||{}) || "";
     const estado= (c.estado || c.status || "").toLowerCase();
     const noL   = c.noLeidos ?? c.unread ?? 0;
@@ -431,9 +432,11 @@ function pintarConversaciones(arr){
 
     div.innerHTML =
       '<div class="top"><span class="nombre"></span><span class="hora">'+hora+'</span></div>'+
+      (nom!==tel ? '<div class="subtel"></div>' : '')+
       '<div class="prev"></div>'+
       '<div class="fila2">'+badge+cntL+'</div>';
     div.querySelector(".nombre").textContent = nom;
+    if(nom!==tel){ div.querySelector(".subtel").textContent = tel; }
     div.querySelector(".prev").textContent = prev;
     cont.appendChild(div);
   });
