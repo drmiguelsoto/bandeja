@@ -2,13 +2,13 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="theme-color" content="#075E54" />
 <link rel="manifest" href="manifest.json" />
 <link rel="apple-touch-icon" href="apple-touch-icon.png" />
 <link rel="icon" type="image/png" href="icon-192.png" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
 <meta name="apple-mobile-web-app-title" content="Michelle" />
 <meta name="mobile-web-app-capable" content="yes" />
 <title>Bandeja · Michelle</title>
@@ -32,18 +32,10 @@
   body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--wa-txt);background:#D1D7DB;-webkit-font-smoothing:antialiased;line-height:1.4}
   .oculto{display:none !important}
 
-  /* iOS PWA: reserva la zona segura de arriba SOLO en modo app instalada
-     (display-mode: standalone). El respaldo de 44px cubre el caso en que iOS
-     no reporte bien la medida, para que la barra y la flecha nunca queden
-     tapadas por la hora/muesca. En navegador no se aplica (ahí ya se ve bien). */
+  /* Con la barra de estado en modo 'default' e sin viewport-fit=cover, iOS ya
+     reserva el espacio de arriba automáticamente: el contenido empieza debajo
+     de la hora/muesca y la barra superior nunca queda tapada. */
   .lista-head, .conv-head{ min-height:60px; height:auto; }
-  @media (display-mode: standalone), (display-mode: fullscreen){
-    .lista-head, .conv-head{ padding-top:calc(env(safe-area-inset-top, 44px) + 10px); }
-    .chat-vacio{ padding-top:calc(env(safe-area-inset-top, 44px) + 30px); }
-    #login{ padding-top:calc(env(safe-area-inset-top, 44px) + 20px); }
-    .mensajes{ padding-bottom:calc(env(safe-area-inset-bottom, 0px) + 8px); }
-    .responder{ padding-bottom:calc(env(safe-area-inset-bottom, 0px) + 8px); }
-  }
 
   #login{height:100%;display:flex;align-items:center;justify-content:center;padding:20px;background:var(--wa-header)}
   .login-card{background:#fff;border-radius:14px;max-width:360px;width:100%;padding:40px 30px;text-align:center;box-shadow:0 12px 40px rgba(0,0,0,.2)}
