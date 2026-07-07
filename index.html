@@ -54,7 +54,28 @@
   .lista-head .yo{width:40px;height:40px;border-radius:50%;object-fit:cover;background:#ccc}
   .lista-head .titulo{font-size:17px;font-weight:600}
   .lista-head .yo-mail{font-size:12px;color:var(--wa-txt2);margin-top:1px}
-  .lista-head .salir{margin-left:auto;background:none;border:none;color:var(--wa-txt2);cursor:pointer;font-size:13px;padding:6px 8px;border-radius:6px}
+  .lista-head .salir{margin-left:8px;background:none;border:none;color:var(--wa-txt2);cursor:pointer;font-size:13px;padding:6px 8px;border-radius:6px}
+  .lista-head .campana{margin-left:auto;position:relative;background:none;border:none;cursor:pointer;padding:6px;border-radius:50%;color:#54656f}
+  .lista-head .campana:hover{background:#e4e7ea}
+  .lista-head .campana svg{width:22px;height:22px;fill:currentColor;display:block}
+  .campana .punto-noti{position:absolute;top:4px;right:4px;width:9px;height:9px;border-radius:50%;background:#c0392b;border:2px solid #F0F2F5}
+  /* Hoja de notificaciones */
+  .noti-fondo{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:60;display:flex;align-items:center;justify-content:center;padding:20px}
+  .noti-card{background:#fff;border-radius:14px;max-width:380px;width:100%;padding:24px;box-shadow:0 12px 40px rgba(0,0,0,.25)}
+  .noti-card h3{font-size:18px;font-weight:600;margin-bottom:6px}
+  .noti-card p{font-size:13.5px;color:var(--wa-txt2);margin-bottom:18px;line-height:1.5}
+  .noti-op{display:flex;align-items:flex-start;gap:12px;padding:12px;border:1px solid var(--wa-linea);border-radius:10px;cursor:pointer;margin-bottom:10px}
+  .noti-op.sel{border-color:var(--wa-send);background:#f0fbf6}
+  .noti-op .radio{width:20px;height:20px;border-radius:50%;border:2px solid #c4ccd1;flex:0 0 auto;margin-top:1px;position:relative}
+  .noti-op.sel .radio{border-color:var(--wa-send)}
+  .noti-op.sel .radio::after{content:"";position:absolute;inset:3px;border-radius:50%;background:var(--wa-send)}
+  .noti-op .tit{font-size:14.5px;font-weight:600;color:var(--wa-txt)}
+  .noti-op .des{font-size:12.5px;color:var(--wa-txt2);margin-top:2px}
+  .noti-acc{display:flex;gap:10px;margin-top:6px}
+  .noti-btn{flex:1;border:none;border-radius:22px;padding:11px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit}
+  .noti-btn.primario{background:var(--wa-send);color:#fff}
+  .noti-btn.sec{background:#e9edef;color:var(--wa-txt)}
+  .noti-estado{font-size:12px;color:var(--wa-txt2);text-align:center;margin-top:12px}
   .lista-head .salir:hover{background:#e4e7ea}
   .buscador{padding:8px 12px;background:#fff;border-bottom:1px solid var(--wa-linea);flex:0 0 auto}
   .buscador input{width:100%;border:none;background:#F0F2F5;border-radius:8px;padding:9px 14px;font-size:14px;font-family:inherit;color:var(--wa-txt)}
@@ -154,6 +175,10 @@
         <div class="titulo">Chats</div>
         <div class="yo-mail" id="u-mail"></div>
       </div>
+      <button class="campana" id="btn-noti" onclick="menuNoti()" title="Notificaciones" aria-label="Notificaciones">
+        <svg viewBox="0 0 24 24"><path d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22zm6-6v-5a6 6 0 0 0-5-5.91V4a1 1 0 0 0-2 0v1.09A6 6 0 0 0 6 11v5l-1.7 1.7A1 1 0 0 0 5 19h14a1 1 0 0 0 .7-1.7L18 16z"/></svg>
+        <span class="punto-noti oculto" id="punto-noti"></span>
+      </button>
       <button class="salir" onclick="salir()">Salir</button>
     </div>
     <div class="buscador"><input id="q" type="text" placeholder="Buscar un chat" oninput="filtrar(this.value)" /></div>
@@ -228,7 +253,7 @@ function onCredential(resp){
   document.getElementById("u-mail").textContent=p.email||"";
   const foto=document.getElementById("u-foto");
   if(p.picture){ foto.src=p.picture; foto.style.display=""; } else { foto.style.display="none"; }
-  programarRefresco(); entrar();
+  programarRefresco(); entrar(); revisarNoti();
 }
 function entrar(){
   document.getElementById("login").classList.add("oculto");
@@ -379,6 +404,78 @@ async function devolver(){
   try{ await api("/inbox/devolver",{ method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify({ telefono:activo }) }); toast("Control devuelto a Michelle."); await cargarHilo(); cargarConversaciones(); }
   catch(e){ if(e.message!=="auth") toast("No se pudo devolver el control."); }
   finally{ btn.disabled=false; }
+}
+
+/* ============================================================
+   NOTIFICACIONES PUSH
+   ============================================================ */
+let VAPID_PUB=null, prefNoti="importante";
+function b64ToUint8(base64){
+  const pad="=".repeat((4-base64.length%4)%4);
+  const b=(base64+pad).replace(/-/g,"+").replace(/_/g,"/");
+  const raw=atob(b); const arr=new Uint8Array(raw.length);
+  for(let i=0;i<raw.length;i++) arr[i]=raw.charCodeAt(i);
+  return arr;
+}
+function soportaPush(){ return ("serviceWorker" in navigator) && ("PushManager" in window) && ("Notification" in window); }
+
+async function revisarNoti(){
+  if(!soportaPush()) return;
+  try{ const cfg=await fetch(API+"/inbox/config").then(r=>r.json()).catch(()=>null); if(cfg && cfg.vapid_public_key) VAPID_PUB=cfg.vapid_public_key; }catch(e){}
+  try{ const pr=await api("/inbox/push/pref"); if(pr && pr.pref) prefNoti=pr.pref; }catch(e){}
+  const punto=document.getElementById("punto-noti");
+  if(Notification.permission==="granted"){ if(punto) punto.classList.add("oculto"); suscribir(); }
+  else if(Notification.permission==="default"){ if(punto) punto.classList.remove("oculto"); }
+}
+async function suscribir(){
+  if(!soportaPush() || !VAPID_PUB) return false;
+  try{
+    const reg=await navigator.serviceWorker.ready;
+    let sub=await reg.pushManager.getSubscription();
+    if(!sub){ sub=await reg.pushManager.subscribe({ userVisibleOnly:true, applicationServerKey:b64ToUint8(VAPID_PUB) }); }
+    await api("/inbox/push/subscribe",{ method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify({ sub }) });
+    return true;
+  }catch(e){ console.warn("suscribir:",e); return false; }
+}
+function menuNoti(){
+  const permiso=soportaPush()?Notification.permission:"no-soporta";
+  const div=document.createElement("div"); div.className="noti-fondo"; div.id="noti-fondo";
+  div.onclick=(e)=>{ if(e.target===div) cerrarNoti(); };
+  let cuerpo="";
+  if(permiso==="no-soporta"){
+    cuerpo='<p>Este dispositivo no soporta notificaciones. En iPhone, primero instala la app en tu pantalla de inicio desde Safari.</p><div class="noti-acc"><button class="noti-btn sec" onclick="cerrarNoti()">Entendido</button></div>';
+  }else if(permiso==="denied"){
+    cuerpo='<p>Las notificaciones están bloqueadas. Actívalas en Ajustes del teléfono → esta app → Notificaciones, y vuelve a entrar.</p><div class="noti-acc"><button class="noti-btn sec" onclick="cerrarNoti()">Entendido</button></div>';
+  }else if(permiso==="default"){
+    cuerpo='<p>Activa las notificaciones para avisarte cuando un paciente necesite atención, aunque no tengas la app abierta.</p><div class="noti-acc"><button class="noti-btn sec" onclick="cerrarNoti()">Ahora no</button><button class="noti-btn primario" onclick="activarNoti()">Activar</button></div>';
+  }else{ cuerpo=opcionesInterruptor(); }
+  div.innerHTML='<div class="noti-card"><h3>Notificaciones</h3>'+cuerpo+'</div>';
+  document.body.appendChild(div);
+}
+function opcionesInterruptor(){
+  const impSel=prefNoti!=="todo"?" sel":""; const todoSel=prefNoti==="todo"?" sel":"";
+  return '<p>Elige cuándo quieres que te avise.</p>'+
+    '<div class="noti-op'+impSel+'" onclick="setPref(\'importante\')"><div class="radio"></div><div><div class="tit">Solo lo importante</div><div class="des">Cuando un paciente pasa a atención humana o alguien en espera vuelve a escribir. Recomendado.</div></div></div>'+
+    '<div class="noti-op'+todoSel+'" onclick="setPref(\'todo\')"><div class="radio"></div><div><div class="tit">Notificarme todo</div><div class="des">Cada mensaje de cada paciente, aunque Michelle lo esté atendiendo. Puede sonar mucho.</div></div></div>'+
+    '<div class="noti-acc"><button class="noti-btn primario" onclick="cerrarNoti()">Listo</button></div>'+
+    '<div class="noti-estado" id="noti-estado"></div>';
+}
+function cerrarNoti(){ const d=document.getElementById("noti-fondo"); if(d) d.remove(); }
+async function activarNoti(){
+  try{
+    const permiso=await Notification.requestPermission();
+    const punto=document.getElementById("punto-noti"); if(punto) punto.classList.add("oculto");
+    if(permiso==="granted"){ const ok=await suscribir(); cerrarNoti(); if(ok){ menuNoti(); toast("Notificaciones activadas."); } else toast("No se pudo completar la suscripción."); }
+    else{ cerrarNoti(); toast("Permiso no concedido."); }
+  }catch(e){ cerrarNoti(); toast("No se pudo activar."); }
+}
+async function setPref(p){
+  prefNoti=p;
+  document.querySelectorAll(".noti-op").forEach((el,i)=>{ el.classList.toggle("sel",(i===0)===(p!=="todo")); });
+  try{
+    await api("/inbox/push/pref",{ method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify({ pref:p }) });
+    const est=document.getElementById("noti-estado"); if(est) est.textContent = p==="todo"?"Te avisaré de cada mensaje.":"Te avisaré solo de lo importante.";
+  }catch(e){}
 }
 
 function cerrarChatMovil(){ activo=null; clearInterval(tHilo); tHilo=null; document.getElementById("panel-lista").classList.remove("oculta-movil"); document.getElementById("panel-chat").classList.remove("abierta"); pintarConversaciones(); }
