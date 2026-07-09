@@ -130,6 +130,9 @@
   .burbuja.mia::after{content:"";position:absolute;top:0;right:-8px;border-width:0 0 10px 10px;border-style:solid;border-color:transparent transparent transparent var(--wa-out)}
   .burbuja.suya::after{content:"";position:absolute;top:0;left:-8px;border-width:0 10px 10px 0;border-style:solid;border-color:transparent var(--wa-in) transparent transparent}
   .burbuja .autor{font-size:12px;font-weight:600;margin-bottom:2px}
+  .burbuja .adj{display:block;margin:2px 0 4px}
+  .burbuja .adj img{display:block;max-width:260px;max-height:340px;width:auto;border-radius:6px;cursor:zoom-in;background:#f0f2f5}
+  .burbuja .adj-link{display:inline-block;padding:8px 12px;background:#f0f2f5;border-radius:8px;color:#075E54;text-decoration:none;font-size:13.5px;font-weight:500}
   .burbuja.michelle .autor{color:var(--wa-header-2)}
   .burbuja.agente .autor{color:#8a6d3b}
   .etq-fecha{align-self:center;background:#fff;color:var(--wa-txt2);font-size:12px;padding:5px 12px;border-radius:8px;box-shadow:var(--sombra);margin:8px 0}
@@ -369,7 +372,19 @@ function pintarMensajes(msgs){
     if(fecha && fecha!==fechaPrev){ const f=document.createElement("div"); f.className="etq-fecha"; f.textContent=fecha; cont.appendChild(f); fechaPrev=fecha; }
     const div=document.createElement("div"); div.className="burbuja "+clase;
     let html=""; if(mia && etiqueta) html+='<div class="autor">'+etiqueta+'</div>';
-    html+='<span class="cuerpo"></span>';
+    // ¿El mensaje trae un archivo adjunto? (📷/📎/🎤/🎥 seguido de una URL)
+    const mMedia = mostrado && mostrado.match(/^(📷|📎|🎤|🎥)\s*\[[^\]]*\]\s*(https?:\/\/\S+)/);
+    if(mMedia){
+      const url = mMedia[2];
+      const esImagen = /^📷/.test(mostrado) || /\.(jpe?g|png|gif|webp)(\?|$)/i.test(url);
+      if(esImagen){
+        html+='<a class="adj" href="'+url+'" target="_blank" rel="noopener"><img src="'+url+'" alt="Imagen del paciente" loading="lazy"></a>';
+      }else{
+        html+='<a class="adj-link" href="'+url+'" target="_blank" rel="noopener">📎 Abrir archivo</a>';
+      }
+    }else{
+      html+='<span class="cuerpo"></span>';
+    }
     let acuse='';
     if(mia){
       const est=(m.estado_envio||m.estado||'').toLowerCase();
@@ -382,7 +397,10 @@ function pintarMensajes(msgs){
       else acuse='<span title="Enviando…" style="opacity:.5">🕓</span>'; // queued / sin dato aún
     }
     html+='<span class="pie">'+(traducido && !verOriginal?'<span class="trad-flag">traducido · </span>':'')+(hora||'')+acuse+'</span>';
-    div.innerHTML=html; div.querySelector(".cuerpo").textContent=mostrado; cont.appendChild(div);
+    div.innerHTML=html;
+    const cuerpoEl = div.querySelector(".cuerpo");
+    if(cuerpoEl) cuerpoEl.textContent=mostrado;
+    cont.appendChild(div);
   });
   if(abajo) cont.scrollTop=cont.scrollHeight;
   traducirPendientes(originales).then(cambio=>{ if(cambio) pintarMensajes(msgs); });
