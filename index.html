@@ -113,6 +113,9 @@
   .conv-head .acciones{display:flex;align-items:center;gap:8px}
   .btn-idioma{background:none;border:none;color:var(--wa-txt2);cursor:pointer;font-size:13px;padding:6px 8px;border-radius:6px}
   .btn-idioma:hover{background:#e4e7ea}
+  .btn-bloquear{background:none;border:1px solid #d9dde1;color:var(--wa-txt2);cursor:pointer;font-size:13px;padding:7px 12px;border-radius:20px;margin-right:8px}
+  .btn-bloquear:hover{background:#fdecea;border-color:#e8a29a;color:#c0392b}
+  .btn-bloquear:disabled{opacity:.5;cursor:default}
   .btn-devolver{background:var(--wa-send);color:#fff;border:none;font-size:13px;font-weight:500;padding:8px 14px;border-radius:20px;cursor:pointer}
   .btn-devolver:hover{background:#029e7d}
   .btn-devolver:disabled{opacity:.5;cursor:default}
@@ -211,6 +214,7 @@
         </div>
         <div class="acciones">
           <button class="btn-idioma" id="btn-idioma" onclick="toggleIdioma()">Ver original</button>
+          <button class="btn-bloquear" id="btn-bloquear" onclick="bloquear()" title="Michelle dejará de responderle por completo">Bloquear</button>
           <button class="btn-devolver" id="btn-devolver" onclick="devolver()">Devolver a Michelle</button>
         </div>
       </div>
@@ -442,6 +446,20 @@ async function responder(){
   catch(e){ if(e.message!=="auth") toast("No se pudo enviar. Intenta de nuevo."); }
   finally{ btn.disabled=false; }
 }
+async function bloquear(){
+  if(!activo) return;
+  if(!confirm("¿Bloquear este número?\n\nMichelle dejará de responderle por completo y no recibirá mensajes de seguimiento. Úsalo para spam o contactos que no son pacientes.")) return;
+  const motivo = prompt("¿Motivo? (opcional, para tu registro)") || "";
+  const btn=document.getElementById("btn-bloquear"); btn.disabled=true;
+  try{
+    await api("/inbox/bloquear",{ method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify({ telefono:activo, motivo }) });
+    toast("Número bloqueado. Michelle ya no le responderá.");
+    cargarConversaciones();
+  }
+  catch(e){ if(e.message!=="auth") toast("No se pudo bloquear."); }
+  finally{ btn.disabled=false; }
+}
+
 async function devolver(){
   if(!activo) return; if(!confirm("¿Devolver esta conversación a Michelle?")) return;
   const btn=document.getElementById("btn-devolver"); btn.disabled=true;
