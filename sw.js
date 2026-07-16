@@ -4,7 +4,7 @@
    (esos siempre se piden frescos). La base de notificaciones queda lista abajo
    para la Etapa 3.
 */
-const CACHE = "bandeja-v10";
+const CACHE = "bandeja-v11";
 const SHELL = [
   "./",
   "./index.html",
