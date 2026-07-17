@@ -438,13 +438,17 @@ function pareceEspanol(t){
 }
 function toggleIdioma(){ verOriginal=!verOriginal; const b=document.getElementById("btn-idioma"); if(b) b.textContent=verOriginal?"Ver traducción":"Ver original"; if(activo) cargarHilo(); }
 
+let enviando=false;
 async function responder(){
+  if(enviando) return;                      // ya hay un envío en curso (Enter doble)
   const ta=document.getElementById("txt"); const texto=ta.value.trim();
   if(!texto||!activo) return;
+  enviando=true;
   const btn=document.getElementById("btn-enviar"); btn.disabled=true;
-  try{ await api("/inbox/responder",{ method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify({ telefono:activo, texto }) }); ta.value=""; autoAlto(ta); await cargarHilo(); cargarConversaciones(); }
-  catch(e){ if(e.message!=="auth") toast("No se pudo enviar. Intenta de nuevo."); }
-  finally{ btn.disabled=false; }
+  ta.value=""; autoAlto(ta);                // vaciamos ya: si vuelve a dar Enter, no hay texto que reenviar
+  try{ await api("/inbox/responder",{ method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify({ telefono:activo, texto }) }); await cargarHilo(); cargarConversaciones(); }
+  catch(e){ if(e.message!=="auth"){ ta.value=texto; autoAlto(ta); toast("No se pudo enviar. Intenta de nuevo."); } }
+  finally{ enviando=false; btn.disabled=false; }
 }
 async function bloquear(){
   if(!activo) return;
