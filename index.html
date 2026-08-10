@@ -116,6 +116,9 @@
   .btn-bloquear{background:none;border:1px solid #d9dde1;color:var(--wa-txt2);cursor:pointer;font-size:13px;padding:7px 12px;border-radius:20px;margin-right:8px}
   .btn-bloquear:hover{background:#fdecea;border-color:#e8a29a;color:#c0392b}
   .btn-bloquear:disabled{opacity:.5;cursor:default}
+  .btn-desbloquear{background:none;border:1px solid var(--wa-send);color:var(--wa-send);cursor:pointer;font-size:13px;font-weight:500;padding:7px 12px;border-radius:20px;margin-right:8px}
+  .btn-desbloquear:hover{background:#e8f7f2}
+  .btn-desbloquear:disabled{opacity:.5;cursor:default}
   .btn-devolver{background:var(--wa-send);color:#fff;border:none;font-size:13px;font-weight:500;padding:8px 14px;border-radius:20px;cursor:pointer}
   .btn-devolver:hover{background:#029e7d}
   .btn-devolver:disabled{opacity:.5;cursor:default}
@@ -215,6 +218,7 @@
         <div class="acciones">
           <button class="btn-idioma" id="btn-idioma" onclick="toggleIdioma()">Ver original</button>
           <button class="btn-bloquear" id="btn-bloquear" onclick="bloquear()" title="Michelle dejará de responderle por completo">Bloquear</button>
+          <button class="btn-desbloquear" id="btn-desbloquear" onclick="desbloquear()" title="Quitar el bloqueo — Michelle volverá a responderle" style="display:none">Desbloquear</button>
           <button class="btn-devolver" id="btn-devolver" onclick="devolver()">Devolver a Michelle</button>
         </div>
       </div>
@@ -320,6 +324,7 @@ function pintarConversaciones(){
     const noL=c.noLeidos ?? c.unread ?? 0;
     const hora=fmtHora(c.ts||c.fecha||c.timestamp||c.updatedAt||c.ultimo_en);
     const esHumano=/human|pausa|agente|espera/.test(estado);
+    const bloq=!!(c.bloqueado===true || estado==="bloqueado");
     const div=document.createElement("div");
     div.className="chat"+(tel===activo?" activa":"");
     div.onclick=()=>abrirHilo(tel,nom);
@@ -328,7 +333,7 @@ function pintarConversaciones(){
       '<div class="chat-cuerpo">'+
         '<div class="chat-top"><span class="chat-nombre"></span><span class="chat-hora'+(noL>0?' hay':'')+'">'+hora+'</span></div>'+
         '<div class="chat-bot"><span class="chat-prev"></span>'+
-          (esHumano?'<span class="badge-espera">En espera</span>':(noL>0?'<span class="cuenta">'+noL+'</span>':'<span></span>'))+
+          (bloq?'<span style="font-size:11px;color:#c0392b;border:1px solid #e8a29a;border-radius:10px;padding:1px 7px">Bloqueado</span>':(esHumano?'<span class="badge-espera">En espera</span>':(noL>0?'<span class="cuenta">'+noL+'</span>':'<span></span>')))+
         '</div>'+
         (nom!==tel?'<div class="chat-tel"></div>':'')+
       '</div>';
@@ -348,7 +353,31 @@ async function abrirHilo(tel,nom){
   const av=document.getElementById("h-avatar"); av.textContent=inicial(nom); av.style.background=colorAvatar(nom);
   document.getElementById("panel-lista").classList.add("oculta-movil");
   document.getElementById("panel-chat").classList.add("abierta");
+  actualizarBotonesBloqueo(tel);
   await cargarHilo(); clearInterval(tHilo); tHilo=setInterval(cargarHilo,5000); pintarConversaciones();
+}
+
+// Busca la conversación en la lista cargada (por número normalizado).
+function convDe(tel){
+  const n=String(tel||"").replace(/\D/g,"").slice(-10);
+  return (ULTIMAS||[]).find(c=>String(c.telefono||c.phone||c.id||"").replace(/\D/g,"").slice(-10)===n);
+}
+// Muestra "Desbloquear" si el número está bloqueado; si no, "Bloquear" + "Devolver".
+function actualizarBotonesBloqueo(tel){
+  const c=convDe(tel);
+  const bloq=!!(c && (c.bloqueado===true || (c.estado||"").toLowerCase()==="bloqueado"));
+  const bB=document.getElementById("btn-bloquear");
+  const bU=document.getElementById("btn-desbloquear");
+  const bDev=document.getElementById("btn-devolver");
+  if(bloq){
+    if(bB) bB.style.display="none";
+    if(bDev) bDev.style.display="none";
+    if(bU){ bU.style.display=""; bU.disabled=false; }
+  }else{
+    if(bB){ bB.style.display=""; bB.disabled=false; }
+    if(bDev) bDev.style.display="";
+    if(bU) bU.style.display="none";
+  }
 }
 async function cargarHilo(){
   if(!activo) return;
@@ -458,10 +487,25 @@ async function bloquear(){
   try{
     await api("/inbox/bloquear",{ method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify({ telefono:activo, motivo }) });
     toast("Número bloqueado. Michelle ya no le responderá.");
-    cargarConversaciones();
+    await cargarConversaciones();
+    actualizarBotonesBloqueo(activo);
   }
   catch(e){ if(e.message!=="auth") toast("No se pudo bloquear."); }
   finally{ btn.disabled=false; }
+}
+
+async function desbloquear(){
+  if(!activo) return;
+  if(!confirm("¿Desbloquear este número?\n\nMichelle volverá a responderle normalmente.")) return;
+  const btn=document.getElementById("btn-desbloquear"); btn.disabled=true;
+  try{
+    await api("/inbox/desbloquear",{ method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify({ telefono:activo }) });
+    toast("Número desbloqueado. Michelle volverá a responderle.");
+    await cargarConversaciones();
+    actualizarBotonesBloqueo(activo);
+    await cargarHilo();
+  }
+  catch(e){ if(e.message!=="auth") toast("No se pudo desbloquear."); btn.disabled=false; }
 }
 
 async function devolver(){
