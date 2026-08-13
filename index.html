@@ -73,6 +73,9 @@
   .rango-fechas{display:flex;gap:8px;align-items:center;margin-bottom:14px}
   .rango-fechas input{flex:1;padding:9px;border:1px solid var(--wa-linea);border-radius:8px;font-size:13px}
   .rango-acciones{display:flex;gap:8px;justify-content:flex-end}
+  .csv-linea{text-align:center;margin-top:12px}
+  .link-csv{font-size:12.5px;color:var(--wa-txt2);cursor:pointer;text-decoration:underline}
+  .link-csv:hover{color:var(--wa-send)}
   .noti-card{background:#fff;border-radius:14px;max-width:380px;width:100%;padding:24px;box-shadow:0 12px 40px rgba(0,0,0,.25)}
   .noti-card h3{font-size:18px;font-weight:600;margin-bottom:6px}
   .noti-card p{font-size:13.5px;color:var(--wa-txt2);margin-bottom:18px;line-height:1.5}
@@ -302,8 +305,8 @@ function cerrarDescarga(){ const f=document.getElementById("desc-fondo"); if(f) 
 // YYYY-MM-DD en la fecha local (el navegador del consultorio está en México).
 function ymdLocal(d){ const z=n=>String(n).padStart(2,"0"); return d.getFullYear()+"-"+z(d.getMonth()+1)+"-"+z(d.getDate()); }
 
-// Calcula el rango elegido y dispara la descarga.
-function descargarRango(tipo){
+// Calcula el rango {desde,hasta} según la opción elegida (o null si custom inválido).
+function calcRango(tipo){
   const hoy=new Date(); let desde, hasta;
   if(tipo==="hoy"){ desde=hasta=ymdLocal(hoy); }
   else if(tipo==="ayer"){ const a=new Date(hoy); a.setDate(a.getDate()-1); desde=hasta=ymdLocal(a); }
@@ -312,11 +315,38 @@ function descargarRango(tipo){
   else if(tipo==="todo"){ desde="2020-01-01"; hasta=ymdLocal(hoy); }
   else if(tipo==="custom"){
     desde=document.getElementById("desc-desde").value; hasta=document.getElementById("desc-hasta").value;
-    if(!desde||!hasta){ toast("Elige ambas fechas."); return; }
+    if(!desde||!hasta){ toast("Elige ambas fechas."); return null; }
     if(desde>hasta){ const t=desde; desde=hasta; hasta=t; }
   }
+  return { desde, hasta };
+}
+
+// Abre el reporte VISUAL (HTML) del período en una pestaña nueva.
+function abrirReporte(tipo){
+  const r=calcRango(tipo); if(!r) return;
   cerrarDescarga();
-  descargarAtribucion(desde, hasta);
+  verReporteHtml(r.desde, r.hasta);
+}
+async function verReporteHtml(desde, hasta){
+  // Abrimos la pestaña YA (con el gesto del clic) para que no la bloquee el navegador.
+  const w=window.open("", "_blank");
+  if(w){ try{ w.document.write("<p style='font-family:sans-serif;padding:24px;color:#666'>Generando reporte…</p>"); }catch(e){} }
+  try{
+    let url=API+"/inbox/atribucion.html";
+    const qs=[]; if(desde)qs.push("desde="+encodeURIComponent(desde)); if(hasta)qs.push("hasta="+encodeURIComponent(hasta));
+    if(qs.length)url+="?"+qs.join("&");
+    const r=await fetch(url, { headers:{ "Authorization":"Bearer "+ID_TOKEN }, cache:"no-store" });
+    if(!r.ok){ if(w)w.close(); toast("No se pudo generar el reporte."); return; }
+    const html=await r.text();
+    if(w){ w.document.open(); w.document.write(html); w.document.close(); }
+  }catch(e){ if(w)w.close(); toast("No se pudo abrir el reporte."); }
+}
+
+// Descarga el CSV crudo (usa el rango personalizado si está lleno; si no, todo).
+function descargarCSVActual(){
+  const d=document.getElementById("desc-desde").value, h=document.getElementById("desc-hasta").value;
+  cerrarDescarga();
+  if(d && h){ descargarAtribucion(d, h); } else { descargarAtribucion("2020-01-01", ymdLocal(new Date())); }
 }
 
 // Descarga el reporte de atribución (CSV) del período dado, usando la sesión de
@@ -674,14 +704,14 @@ function fmtFecha(v){ const d=_fecha(v); if(!d) return ""; const hoy=new Date();
 </script>
 <div class="noti-fondo oculto" id="desc-fondo" onclick="if(event.target===this)cerrarDescarga()">
   <div class="noti-card">
-    <h3>Descargar reporte de atribución</h3>
-    <p>Elige el período. Se descarga un CSV (se abre en Excel) con el resumen por fuente y el detalle por lead.</p>
+    <h3>Reporte de atribución</h3>
+    <p>Elige el período. Se abre un reporte visual en una pestaña nueva (puedes imprimirlo a PDF desde ahí).</p>
     <div class="rangos-rapidos">
-      <button class="btn-rango" onclick="descargarRango('hoy')">Hoy</button>
-      <button class="btn-rango" onclick="descargarRango('ayer')">Ayer</button>
-      <button class="btn-rango" onclick="descargarRango('7d')">Últimos 7 días</button>
-      <button class="btn-rango" onclick="descargarRango('mes')">Este mes</button>
-      <button class="btn-rango" onclick="descargarRango('todo')">Todo</button>
+      <button class="btn-rango" onclick="abrirReporte('hoy')">Hoy</button>
+      <button class="btn-rango" onclick="abrirReporte('ayer')">Ayer</button>
+      <button class="btn-rango" onclick="abrirReporte('7d')">Últimos 7 días</button>
+      <button class="btn-rango" onclick="abrirReporte('mes')">Este mes</button>
+      <button class="btn-rango" onclick="abrirReporte('todo')">Todo</button>
     </div>
     <div class="rango-custom">
       <div class="rango-custom-tit">O un rango personalizado:</div>
@@ -692,8 +722,9 @@ function fmtFecha(v){ const d=_fecha(v); if(!d) return ""; const hoy=new Date();
       </div>
       <div class="rango-acciones">
         <button class="btn-rango" onclick="cerrarDescarga()">Cancelar</button>
-        <button class="btn-devolver" onclick="descargarRango('custom')">Descargar</button>
+        <button class="btn-devolver" onclick="abrirReporte('custom')">Ver reporte</button>
       </div>
+      <div class="csv-linea"><a class="link-csv" onclick="descargarCSVActual()">Descargar como CSV (datos crudos)</a></div>
     </div>
   </div>
 </div>
