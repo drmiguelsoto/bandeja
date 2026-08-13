@@ -58,6 +58,10 @@
   .lista-head .campana{margin-left:auto;position:relative;background:none;border:none;cursor:pointer;padding:6px;border-radius:50%;color:#54656f}
   .lista-head .campana:hover{background:#e4e7ea}
   .lista-head .campana svg{width:22px;height:22px;fill:currentColor;display:block}
+  .lista-head .descarga{position:relative;background:none;border:none;cursor:pointer;padding:6px;border-radius:50%;color:#54656f}
+  .lista-head .descarga:hover{background:#e4e7ea}
+  .lista-head .descarga:disabled{opacity:.5;cursor:default}
+  .lista-head .descarga svg{width:22px;height:22px;fill:currentColor;display:block}
   .campana .punto-noti{position:absolute;top:4px;right:4px;width:9px;height:9px;border-radius:50%;background:#c0392b;border:2px solid #F0F2F5}
   /* Hoja de notificaciones */
   .noti-fondo{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:60;display:flex;align-items:center;justify-content:center;padding:20px}
@@ -194,6 +198,9 @@
         <svg viewBox="0 0 24 24"><path d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22zm6-6v-5a6 6 0 0 0-5-5.91V4a1 1 0 0 0-2 0v1.09A6 6 0 0 0 6 11v5l-1.7 1.7A1 1 0 0 0 5 19h14a1 1 0 0 0 .7-1.7L18 16z"/></svg>
         <span class="punto-noti oculto" id="punto-noti"></span>
       </button>
+      <button class="descarga" id="btn-descarga" onclick="descargarAtribucion()" title="Descargar reporte de atribución (CSV)" aria-label="Descargar reporte de atribución">
+        <svg viewBox="0 0 24 24"><path d="M12 3a1 1 0 0 1 1 1v9.59l2.29-2.3a1 1 0 1 1 1.42 1.42l-4 4a1 1 0 0 1-1.42 0l-4-4a1 1 0 1 1 1.42-1.42l2.29 2.3V4a1 1 0 0 1 1-1zM5 19a1 1 0 0 1 0-2h14a1 1 0 0 1 0 2H5z"/></svg>
+      </button>
       <button class="salir" onclick="salir()">Salir</button>
     </div>
     <div class="buscador"><input id="q" type="text" placeholder="Buscar un chat" oninput="filtrar(this.value)" /></div>
@@ -280,6 +287,26 @@ function entrar(){
 }
 function detenerPolling(){ clearInterval(tConvs); tConvs=null; clearInterval(tHilo); tHilo=null; }
 function salir(){ try{ google.accounts.id.disableAutoSelect(); }catch(e){} ID_TOKEN=null; activo=null; detenerPolling(); clearTimeout(tRefresh); location.reload(); }
+
+// Descarga el reporte de atribución (CSV) usando la sesión de Google de la
+// bandeja. Pide el archivo con el token Bearer, lo recibe como blob y dispara
+// la descarga — sin exponer secretos en la URL.
+async function descargarAtribucion(){
+  const btn=document.getElementById("btn-descarga"); if(btn) btn.disabled=true;
+  try{
+    const r=await fetch(API+"/inbox/atribucion.csv", { headers:{ "Authorization":"Bearer "+ID_TOKEN }, cache:"no-store" });
+    if(r.status===401){ toast("Sesión expirada. Recarga e inténtalo de nuevo."); return; }
+    if(!r.ok){ toast("No se pudo generar el reporte."); return; }
+    const blob=await r.blob();
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.href=url; a.download="atribucion_"+new Date().toISOString().slice(0,10)+".csv";
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+    toast("Reporte descargado.");
+  }catch(e){ toast("No se pudo descargar el reporte."); }
+  finally{ if(btn) btn.disabled=false; }
+}
 
 function tokenExpMs(){ const p=decodeJWT(ID_TOKEN); return (p&&p.exp)?p.exp*1000:0; }
 function tokenValido(){ return !!ID_TOKEN && Date.now() < (tokenExpMs()-60000); }
