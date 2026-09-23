@@ -137,6 +137,9 @@
   .btn-devolver{background:var(--wa-send);color:#fff;border:none;font-size:13px;font-weight:500;padding:8px 14px;border-radius:20px;cursor:pointer}
   .btn-devolver:hover{background:#029e7d}
   .btn-pausar{background:none;border:1px solid #d9dde1;color:var(--wa-txt2);cursor:pointer;font-size:13px;padding:7px 12px;border-radius:20px;margin-right:8px}
+  .btn-fotos{background:none;border:1px solid #bcd9d2;color:#0a7a63;cursor:pointer;font-size:13px;padding:7px 12px;border-radius:20px;margin-right:8px}
+  .btn-fotos:hover{background:#e8f5f1;border-color:#00a884;color:#029e7d}
+  .btn-fotos:disabled{opacity:.5;cursor:default}
   .btn-pausar:hover{background:#fff6e6;border-color:#e0b35c;color:#b7791f}
   .btn-pausar:disabled{opacity:.5;cursor:default}
   .btn-devolver:disabled{opacity:.5;cursor:default}
@@ -239,6 +242,7 @@
           <button class="btn-idioma" id="btn-idioma" onclick="toggleIdioma()">Ver original</button>
           <button class="btn-bloquear" id="btn-bloquear" onclick="bloquear()" title="Michelle dejará de responderle por completo">Bloquear</button>
           <button class="btn-desbloquear" id="btn-desbloquear" onclick="desbloquear()" title="Quitar el bloqueo — Michelle volverá a responderle" style="display:none">Desbloquear</button>
+          <button class="btn-fotos" id="btn-fotos" onclick="enviarFotos()" title="Envía el instructivo de fotos para la simulación 3D (valoración virtual). Blinda a la paciente del seguimiento automático.">📸 Enviar fotos</button>
           <button class="btn-pausar" id="btn-pausar" onclick="pausar()" title="Michelle deja de contactarla por su cuenta, pero le responde si ella escribe">Pausar</button>
           <button class="btn-devolver" id="btn-devolver" onclick="devolver()">Devolver a Michelle</button>
         </div>
@@ -466,15 +470,18 @@ function actualizarBotonesBloqueo(tel){
   const bU=document.getElementById("btn-desbloquear");
   const bDev=document.getElementById("btn-devolver");
   const bPau=document.getElementById("btn-pausar");
+  const bFot=document.getElementById("btn-fotos");
   if(bloq){
     if(bB) bB.style.display="none";
     if(bDev) bDev.style.display="none";
     if(bPau) bPau.style.display="none";
+    if(bFot) bFot.style.display="none";
     if(bU){ bU.style.display=""; bU.disabled=false; }
   }else{
     if(bB){ bB.style.display=""; bB.disabled=false; }
     if(bDev) bDev.style.display="";
     if(bPau){ bPau.style.display=""; bPau.disabled=false; }
+    if(bFot){ bFot.style.display=""; bFot.disabled=false; }
     if(bU) bU.style.display="none";
   }
 }
@@ -621,6 +628,15 @@ async function pausar(){
   const btn=document.getElementById("btn-pausar"); btn.disabled=true;
   try{ await api("/inbox/pausar",{ method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify({ telefono:activo }) }); toast("Conversación pausada — Michelle no la contactará hasta que ella escriba."); await cargarHilo(); cargarConversaciones(); }
   catch(e){ if(e.message!=="auth") toast("No se pudo pausar."); }
+  finally{ btn.disabled=false; }
+}
+
+async function enviarFotos(){
+  if(!activo) return;
+  if(!confirm("¿Enviar el instructivo de fotos para la simulación 3D?\n\nMichelle mandará el enlace correcto según el procedimiento y el idioma de la paciente. Además la marca como agendada, para que NO le llegue el mensaje de seguimiento automático. El control del chat se queda contigo.")) return;
+  const btn=document.getElementById("btn-fotos"); btn.disabled=true;
+  try{ await api("/inbox/enviar-fotos",{ method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify({ telefono:activo }) }); toast("Instructivo de fotos enviado por Michelle."); await cargarHilo(); cargarConversaciones(); }
+  catch(e){ if(e.message!=="auth") toast("No se pudo enviar el instructivo de fotos."); }
   finally{ btn.disabled=false; }
 }
 
