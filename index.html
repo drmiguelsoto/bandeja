@@ -138,6 +138,9 @@
   .btn-devolver:hover{background:#029e7d}
   .btn-pausar{background:none;border:1px solid #d9dde1;color:var(--wa-txt2);cursor:pointer;font-size:13px;padding:7px 12px;border-radius:20px;margin-right:8px}
   .btn-fotos{background:none;border:1px solid #bcd9d2;color:#0a7a63;cursor:pointer;font-size:13px;padding:7px 12px;border-radius:20px;margin-right:8px}
+  .btn-cita{background:none;border:1px solid #bcd9d2;color:#0a7a63;cursor:pointer;font-size:13px;padding:7px 12px;border-radius:20px;margin-right:8px}
+  .btn-cita:hover{background:#e8f5f1;border-color:#00a884;color:#029e7d}
+  .btn-cita:disabled{opacity:.5;cursor:default}
   .btn-fotos:hover{background:#e8f5f1;border-color:#00a884;color:#029e7d}
   .btn-fotos:disabled{opacity:.5;cursor:default}
   .btn-pausar:hover{background:#fff6e6;border-color:#e0b35c;color:#b7791f}
@@ -242,6 +245,7 @@
           <button class="btn-idioma" id="btn-idioma" onclick="toggleIdioma()">Ver original</button>
           <button class="btn-bloquear" id="btn-bloquear" onclick="bloquear()" title="Michelle dejará de responderle por completo">Bloquear</button>
           <button class="btn-desbloquear" id="btn-desbloquear" onclick="desbloquear()" title="Quitar el bloqueo — Michelle volverá a responderle" style="display:none">Desbloquear</button>
+          <button class="btn-cita" id="btn-cita" onclick="yaTieneCita()" title="Marca a la paciente como agendada (ya no le llega seguimiento automático) y devuelve el control a Michelle. Para citas presenciales o virtuales ya confirmadas.">✅ Ya tiene cita</button>
           <button class="btn-fotos" id="btn-fotos" onclick="enviarFotos()" title="Envía el instructivo de fotos para la simulación 3D (valoración virtual). Blinda a la paciente del seguimiento automático.">📸 Enviar fotos</button>
           <button class="btn-pausar" id="btn-pausar" onclick="pausar()" title="Michelle deja de contactarla por su cuenta, pero le responde si ella escribe">Pausar</button>
           <button class="btn-devolver" id="btn-devolver" onclick="devolver()">Devolver a Michelle</button>
@@ -425,6 +429,7 @@ function pintarConversaciones(){
     const esHumano=/human|pausa|agente|espera/.test(estado);
     const bloq=!!(c.bloqueado===true || estado==="bloqueado");
     const pausada=(c.pausada===true) && !bloq && !esHumano;
+    const agendada=(c.agendada===true) && !bloq && !esHumano && !pausada;
     const div=document.createElement("div");
     div.className="chat"+(tel===activo?" activa":"");
     div.onclick=()=>abrirHilo(tel,nom);
@@ -433,12 +438,12 @@ function pintarConversaciones(){
       '<div class="chat-cuerpo">'+
         '<div class="chat-top"><span class="chat-nombre"></span><span class="chat-hora'+(noL>0?' hay':'')+'">'+hora+'</span></div>'+
         '<div class="chat-bot"><span class="chat-prev"></span>'+
-          (bloq?'<span style="font-size:11px;color:#c0392b;border:1px solid #e8a29a;border-radius:10px;padding:1px 7px">Bloqueado</span>':(esHumano?'<span class="badge-espera">En espera</span>':(pausada?'<span style="font-size:11px;color:#b7791f;border:1px solid #e0b35c;border-radius:10px;padding:1px 7px">Pausada</span>':(noL>0?'<span class="cuenta">'+noL+'</span>':'<span></span>'))))+
+          (bloq?'<span style="font-size:11px;color:#c0392b;border:1px solid #e8a29a;border-radius:10px;padding:1px 7px">Bloqueado</span>':(esHumano?'<span class="badge-espera">En espera</span>':(pausada?'<span style="font-size:11px;color:#b7791f;border:1px solid #e0b35c;border-radius:10px;padding:1px 7px">Pausada</span>':(agendada?'<span style="font-size:11px;color:#0a7a63;border:1px solid #9fd3c6;border-radius:10px;padding:1px 7px">Agendada</span>':(noL>0?'<span class="cuenta">'+noL+'</span>':'<span></span>')))))+
         '</div>'+
         (nom!==tel?'<div class="chat-tel"></div>':'')+
       '</div>';
     div.querySelector(".chat-nombre").textContent=nom;
-    div.querySelector(".chat-prev").textContent=prev||(esHumano?"Esperando al equipo":(pausada?"Pausada — Michelle espera a que escriba":"Michelle está atendiendo"));
+    div.querySelector(".chat-prev").textContent=prev||(esHumano?"Esperando al equipo":(pausada?"Pausada — Michelle espera a que escriba":(agendada?"Agendada — ya tiene cita":"Michelle está atendiendo")));
     if(nom!==tel) div.querySelector(".chat-tel").textContent="+"+tel;
     cont.appendChild(div);
   });
@@ -471,17 +476,20 @@ function actualizarBotonesBloqueo(tel){
   const bDev=document.getElementById("btn-devolver");
   const bPau=document.getElementById("btn-pausar");
   const bFot=document.getElementById("btn-fotos");
+  const bCit=document.getElementById("btn-cita");
   if(bloq){
     if(bB) bB.style.display="none";
     if(bDev) bDev.style.display="none";
     if(bPau) bPau.style.display="none";
     if(bFot) bFot.style.display="none";
+    if(bCit) bCit.style.display="none";
     if(bU){ bU.style.display=""; bU.disabled=false; }
   }else{
     if(bB){ bB.style.display=""; bB.disabled=false; }
     if(bDev) bDev.style.display="";
     if(bPau){ bPau.style.display=""; bPau.disabled=false; }
     if(bFot){ bFot.style.display=""; bFot.disabled=false; }
+    if(bCit){ bCit.style.display=""; bCit.disabled=false; }
     if(bU) bU.style.display="none";
   }
 }
@@ -637,6 +645,15 @@ async function enviarFotos(){
   const btn=document.getElementById("btn-fotos"); btn.disabled=true;
   try{ await api("/inbox/enviar-fotos",{ method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify({ telefono:activo }) }); toast("Instructivo de fotos enviado por Michelle."); await cargarHilo(); cargarConversaciones(); }
   catch(e){ if(e.message!=="auth") toast("No se pudo enviar el instructivo de fotos."); }
+  finally{ btn.disabled=false; }
+}
+
+async function yaTieneCita(){
+  if(!activo) return;
+  if(!confirm("¿Marcar que la paciente YA TIENE CITA?\n\nSe marca como agendada (ya NO le llega el mensaje de seguimiento automático) y el control regresa a Michelle. Úsalo cuando confirmes una cita, presencial o virtual.")) return;
+  const btn=document.getElementById("btn-cita"); btn.disabled=true;
+  try{ await api("/inbox/ya-tiene-cita",{ method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify({ telefono:activo }) }); toast("Marcada como agendada — sin seguimiento automático. Control devuelto a Michelle."); await cargarHilo(); cargarConversaciones(); }
+  catch(e){ if(e.message!=="auth") toast("No se pudo marcar la cita."); }
   finally{ btn.disabled=false; }
 }
 
