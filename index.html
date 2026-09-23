@@ -103,7 +103,12 @@
   .avatar{width:49px;height:49px;border-radius:50%;flex:0 0 auto;display:flex;align-items:center;justify-content:center;color:#fff;font-size:19px;font-weight:600}
   .chat-cuerpo{flex:1 1 auto;min-width:0}
   .chat-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
-  .chat-nombre{font-size:16px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .chat-nom-wrap{display:flex;align-items:center;gap:6px;min-width:0}
+  .chat-canal{font-size:10px;font-weight:600;padding:1px 6px;border-radius:8px;flex:0 0 auto;line-height:1.6}
+  .cc-meta{background:#e7f0fe;color:#1877f2;border:1px solid #bcd4fb}
+  .cc-google{background:#e6f4ea;color:#188038;border:1px solid #a8d5b5}
+  .cc-org{background:#f0f2f5;color:#8696a0;border:1px solid #e0e3e7}
+  .chat-nombre{font-size:16px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
   .chat-hora{font-size:12px;color:var(--wa-txt2);flex:0 0 auto}
   .chat-hora.hay{color:var(--wa-accent)}
   .chat-bot{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:2px}
@@ -436,7 +441,7 @@ function pintarConversaciones(){
     div.innerHTML=
       '<div class="avatar" style="background:'+colorAvatar(nom)+'">'+inicial(nom)+'</div>'+
       '<div class="chat-cuerpo">'+
-        '<div class="chat-top"><span class="chat-nombre"></span><span class="chat-hora'+(noL>0?' hay':'')+'">'+hora+'</span></div>'+
+        '<div class="chat-top"><div class="chat-nom-wrap"><span class="chat-nombre"></span>'+canalPill(c.origen_tipo,c.origen_campana)+'</div><span class="chat-hora'+(noL>0?' hay':'')+'">'+hora+'</span></div>'+
         '<div class="chat-bot"><span class="chat-prev"></span>'+
           (bloq?'<span style="font-size:11px;color:#c0392b;border:1px solid #e8a29a;border-radius:10px;padding:1px 7px">Bloqueado</span>':(esHumano?'<span class="badge-espera">En espera</span>':(pausada?'<span style="font-size:11px;color:#b7791f;border:1px solid #e0b35c;border-radius:10px;padding:1px 7px">Pausada</span>':(agendada?'<span style="font-size:11px;color:#0a7a63;border:1px solid #9fd3c6;border-radius:10px;padding:1px 7px">Agendada</span>':(noL>0?'<span class="cuenta">'+noL+'</span>':'<span></span>')))))+
         '</div>'+
@@ -737,6 +742,14 @@ let tToast=null;
 function toast(t){ const el=document.getElementById("toast"); el.textContent=t; el.classList.add("ver"); clearTimeout(tToast); tToast=setTimeout(()=>el.classList.remove("ver"),2600); }
 
 function inicial(nom){ const s=(nom||"").trim(); if(!s||/^[\d+]+$/.test(s)) return "#"; return s[0].toUpperCase(); }
+function canalPill(tipo,campana){
+  const t=String(tipo||"").toLowerCase();
+  const ttl=campana?(' title="'+String(campana).replace(/"/g,"")+'"'):"";
+  if(t==="meta") return '<span class="chat-canal cc-meta"'+ttl+'>Meta</span>';
+  if(t==="google") return '<span class="chat-canal cc-google"'+ttl+'>Google</span>';
+  if(t==="organico"||t==="orgánico") return '<span class="chat-canal cc-org">Orgánico</span>';
+  return "";
+}
 function colorAvatar(nom){ const cols=["#00A884","#0088CC","#B76BB0","#E29B3B","#7A8C99","#C0705B","#5B8C5A","#6C6CC0"]; let h=0; const s=(nom||""); for(let i=0;i<s.length;i++) h=(h*31+s.charCodeAt(i))>>>0; return cols[h%cols.length]; }
 
 function campoTexto(m){
