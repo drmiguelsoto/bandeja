@@ -582,11 +582,16 @@ function pintarMensajes(msgs){
     const mMedia = mostrado && mostrado.match(/^(📷|📎|🎤|🎥)\s*\[[^\]]*\]\s*(https?:\/\/\S+)/);
     if(mMedia){
       const url = mMedia[2];
+      // ¿Es un archivo de Google Drive? (respaldo permanente). Derivamos la miniatura
+      // directa para previsualizar; el clic abre el visor de Drive. Si el archivo es
+      // privado, la miniatura falla y caemos elegante a un enlace "Abrir en Drive".
+      const mDrive = url.match(/drive\.google\.com\/file\/d\/([^/?]+)/) || url.match(/[?&]id=([^&]+)/);
+      const imgSrc = mDrive ? ("https://lh3.googleusercontent.com/d/"+mDrive[1]+"=w1200") : url;
       const esImagen = /^📷/.test(mostrado) || /\.(jpe?g|png|gif|webp)(\?|$)/i.test(url);
       if(esImagen){
-        html+='<a class="adj" href="'+url+'" target="_blank" rel="noopener"><img src="'+url+'" alt="Imagen del paciente" loading="lazy"></a>';
+        html+='<a class="adj" href="'+url+'" target="_blank" rel="noopener"><img src="'+imgSrc+'" alt="Imagen del paciente" loading="lazy" onerror="var a=this.parentNode;a.className=\'adj-link\';a.textContent=\''+(mDrive?'📎 Abrir foto en Drive':'📎 Abrir imagen')+'\';"></a>';
       }else{
-        html+='<a class="adj-link" href="'+url+'" target="_blank" rel="noopener">📎 Abrir archivo</a>';
+        html+='<a class="adj-link" href="'+url+'" target="_blank" rel="noopener">📎 '+(mDrive?'Abrir en Drive':'Abrir archivo')+'</a>';
       }
     }else{
       html+='<span class="cuerpo"></span>';
