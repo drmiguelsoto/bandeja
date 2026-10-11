@@ -431,12 +431,41 @@ async function cargarConversaciones(){
     ULTIMAS=Array.isArray(data)?data:(data.conversaciones||data.items||[]); pintarConversaciones();
   }catch(e){ if(e.message!=="auth") console.warn(e); }
 }
-function filtrar(v){ filtro=(v||"").toLowerCase().trim(); pintarConversaciones(); }
+let tBuscar=null, resultadosBusqueda=[];
+function filtrar(v){
+  filtro=(v||"").toLowerCase().trim();
+  pintarConversaciones();                 // instantáneo: filtra las 200 ya cargadas
+  clearTimeout(tBuscar);
+  if(filtro.length>=2){
+    tBuscar=setTimeout(()=>buscarServidor(filtro),350);  // y pregunta a la base por el resto
+  }else{
+    resultadosBusqueda=[];
+  }
+}
+// Busca en TODO el historial (incluye conversaciones viejas fuera de las 200).
+async function buscarServidor(q){
+  try{
+    const data=await api("/inbox/buscar?q="+encodeURIComponent(q));
+    if(data===null) return;
+    resultadosBusqueda=Array.isArray(data)?data:(data.conversaciones||data.items||[]);
+    if(filtro===q) pintarConversaciones();  // solo si no siguió escribiendo
+  }catch(e){ if(e.message!=="auth") console.warn(e); }
+}
 function pintarConversaciones(){
   const cont=document.getElementById("lista-items");
   let arr=ULTIMAS;
-  if(filtro){ arr=arr.filter(c=>((c.nombre_perfil||c.nombre||"")+" "+(c.telefono||"")).toLowerCase().includes(filtro)); }
-  if(!arr.length){ cont.innerHTML='<div class="vacio-lista">Sin conversaciones.</div>'; return; }
+  if(filtro){
+    arr=ULTIMAS.filter(c=>((c.nombre_perfil||c.nombre||"")+" "+(c.telefono||"")).toLowerCase().includes(filtro));
+    // Suma los resultados del servidor (historial completo) que no estén ya en la lista.
+    if(resultadosBusqueda.length){
+      const vistos=new Set(arr.map(c=>String(c.telefono||c.phone||c.id||"").replace(/\D/g,"").slice(-10)));
+      resultadosBusqueda.forEach(c=>{
+        const n=String(c.telefono||c.phone||c.id||"").replace(/\D/g,"").slice(-10);
+        if(n && !vistos.has(n)){ arr=arr.concat(c); vistos.add(n); }
+      });
+    }
+  }
+  if(!arr.length){ cont.innerHTML='<div class="vacio-lista">'+(filtro?'Sin resultados.':'Sin conversaciones.')+'</div>'; return; }
   cont.innerHTML="";
   arr.forEach(c=>{
     const tel=c.telefono||c.phone||c.id||"";
