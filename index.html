@@ -193,6 +193,14 @@
   .btn-enviar{width:46px;height:46px;border-radius:50%;background:var(--wa-send);border:none;cursor:pointer;flex:0 0 auto;display:flex;align-items:center;justify-content:center}
   .btn-enviar svg{width:22px;height:22px;fill:#fff}
   .btn-enviar:disabled{opacity:.5;cursor:default}
+  .btn-adjuntar{width:46px;height:46px;border-radius:50%;background:transparent;border:none;cursor:pointer;flex:0 0 auto;display:flex;align-items:center;justify-content:center;padding:0}
+  .btn-adjuntar svg{width:24px;height:24px;fill:#54656f}
+  .btn-adjuntar:disabled{opacity:.4;cursor:default}
+  .preview-adj{flex:0 0 auto;background:#F0F2F5;padding:0 14px 8px;display:none;align-items:center;gap:10px}
+  .preview-adj.ver{display:flex}
+  .preview-adj img{width:52px;height:52px;object-fit:cover;border-radius:8px;border:1px solid #d7dbdd}
+  .preview-adj .txt-adj{flex:1;font-size:13px;color:#54656f}
+  .preview-adj .quitar-adj{width:28px;height:28px;border-radius:50%;border:none;background:#e4e7e9;color:#54656f;font-size:16px;line-height:1;cursor:pointer;flex:0 0 auto}
 
   .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#2a2f32;color:#fff;padding:10px 18px;font-size:13px;border-radius:8px;z-index:50;opacity:0;transition:opacity .2s;pointer-events:none}
   .toast.ver{opacity:1}
@@ -272,7 +280,16 @@
         </div>
       </div>
       <div class="mensajes" id="mensajes"></div>
+      <div class="preview-adj" id="preview-adj">
+        <img id="preview-adj-img" alt="Foto por enviar" />
+        <span class="txt-adj">Foto lista — pulsa enviar. Puedes agregar un comentario.</span>
+        <button class="quitar-adj" type="button" onclick="quitarImagen()" aria-label="Quitar foto" title="Quitar foto">✕</button>
+      </div>
       <div class="responder">
+        <input type="file" id="file-adj" accept="image/*" style="display:none" onchange="seleccionImagen(event)" />
+        <button class="btn-adjuntar" id="btn-adjuntar" onclick="document.getElementById('file-adj').click()" aria-label="Adjuntar foto" title="Adjuntar foto">
+          <svg viewBox="0 0 24 24"><path d="M16.5 6v11.5a4 4 0 0 1-8 0V5a2.5 2.5 0 0 1 5 0v10.5a1 1 0 0 1-2 0V6H10v9.5a2.5 2.5 0 0 0 5 0V5a4 4 0 0 0-8 0v12.5a5.5 5.5 0 0 0 11 0V6h-1.5z"/></svg>
+        </button>
         <textarea id="txt" placeholder="Escribe un mensaje" oninput="autoAlto(this)" onkeydown="teclaEnviar(event)"></textarea>
         <button class="btn-enviar" id="btn-enviar" onclick="responder()" aria-label="Enviar">
           <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
@@ -638,6 +655,7 @@ function toggleIdioma(){ verOriginal=!verOriginal; const b=document.getElementBy
 let enviando=false;
 async function responder(){
   if(enviando) return;                      // ya hay un envío en curso (Enter doble)
+  if(imagenPendiente) return enviarImagenBandeja();   // hay foto preparada → se manda la foto
   const ta=document.getElementById("txt"); const texto=ta.value.trim();
   if(!texto||!activo) return;
   enviando=true;
@@ -645,6 +663,62 @@ async function responder(){
   ta.value=""; autoAlto(ta);                // vaciamos ya: si vuelve a dar Enter, no hay texto que reenviar
   try{ await api("/inbox/responder",{ method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify({ telefono:activo, texto }) }); await cargarHilo(); cargarConversaciones(); }
   catch(e){ if(e.message!=="auth"){ ta.value=texto; autoAlto(ta); toast("No se pudo enviar. Intenta de nuevo."); } }
+  finally{ enviando=false; btn.disabled=false; }
+}
+
+// ---- Adjuntar foto y mandarla a la paciente ----
+let imagenPendiente=null;   // { base64 } del JPEG ya reescalado, listo para enviar
+
+// El equipo eligió una foto: la reescalamos en el navegador a JPEG (máx 1600px) para
+// que viaje ligera y en un formato que WhatsApp siempre acepta (evita HEIC/PNG pesados).
+function seleccionImagen(e){
+  const file=e.target.files && e.target.files[0];
+  e.target.value="";                        // permite volver a elegir la misma foto
+  if(!file) return;
+  if(!/^image\//.test(file.type)){ toast("Eso no es una imagen."); return; }
+  const reader=new FileReader();
+  reader.onload=()=>{
+    const img=new Image();
+    img.onload=()=>{
+      const MAX=1600; let w=img.width, h=img.height;
+      if(w>MAX||h>MAX){ const r=Math.min(MAX/w,MAX/h); w=Math.round(w*r); h=Math.round(h*r); }
+      const c=document.createElement("canvas"); c.width=w; c.height=h;
+      c.getContext("2d").drawImage(img,0,0,w,h);
+      let dataUrl;
+      try{ dataUrl=c.toDataURL("image/jpeg",0.85); }
+      catch(err){ toast("No se pudo procesar la imagen."); return; }
+      imagenPendiente={ base64:dataUrl.split(",")[1] };
+      const pv=document.getElementById("preview-adj"); const pvi=document.getElementById("preview-adj-img");
+      pvi.src=dataUrl; pv.classList.add("ver");
+      const ta=document.getElementById("txt"); ta.placeholder="Agrega un comentario (opcional)"; ta.focus();
+    };
+    img.onerror=()=>toast("No se pudo abrir esa imagen (prueba con un JPG o PNG).");
+    img.src=reader.result;
+  };
+  reader.onerror=()=>toast("No se pudo leer el archivo.");
+  reader.readAsDataURL(file);
+}
+
+function quitarImagen(){
+  imagenPendiente=null;
+  document.getElementById("preview-adj").classList.remove("ver");
+  document.getElementById("preview-adj-img").removeAttribute("src");
+  document.getElementById("txt").placeholder="Escribe un mensaje";
+}
+
+async function enviarImagenBandeja(){
+  if(enviando||!imagenPendiente||!activo) return;
+  enviando=true;
+  const btn=document.getElementById("btn-enviar"); btn.disabled=true;
+  const ta=document.getElementById("txt"); const texto=ta.value.trim();
+  const img=imagenPendiente;
+  try{
+    await api("/inbox/enviar-imagen",{ method:"POST", headers:{ "Content-Type":"application/json" },
+      body:JSON.stringify({ telefono:activo, imagenBase64:img.base64, texto }) });
+    ta.value=""; autoAlto(ta); quitarImagen();
+    await cargarHilo(); cargarConversaciones();
+  }
+  catch(e){ if(e.message!=="auth") toast("No se pudo enviar la foto. Intenta de nuevo."); }
   finally{ enviando=false; btn.disabled=false; }
 }
 async function bloquear(){
