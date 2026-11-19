@@ -600,16 +600,16 @@ function pintarMensajes(msgs){
     const mMedia = mostrado && mostrado.match(/^(📷|📎|🎤|🎥)\s*\[[^\]]*\]\s*(https?:\/\/\S+)/);
     if(mMedia){
       const url = mMedia[2];
-      // ¿Es un archivo de Google Drive? (respaldo permanente). Derivamos la miniatura
-      // directa para previsualizar; el clic abre el visor de Drive. Si el archivo es
-      // privado, la miniatura falla y caemos elegante a un enlace "Abrir en Drive".
-      const mDrive = url.match(/drive\.google\.com\/file\/d\/([^/?]+)/) || url.match(/[?&]id=([^&]+)/);
-      const imgSrc = mDrive ? ("https://lh3.googleusercontent.com/d/"+mDrive[1]+"=w1200") : url;
+      // La foto NO se carga directo del enlace (Drive privado / URL de Zavu que caduca y
+      // pide llave). Se baja por el proxy autenticado del backend, que la entrega con la
+      // sesión de la bandeja. Así se ve INCRUSTADA para cualquiera del equipo, sin tener
+      // que estar logueado en el Drive. Se dispara en cargarMedios() tras pintar.
       const esImagen = /^📷/.test(mostrado) || /\.(jpe?g|png|gif|webp)(\?|$)/i.test(url);
+      const dm = encodeURIComponent(url);
       if(esImagen){
-        html+='<a class="adj" href="'+url+'" target="_blank" rel="noopener"><img src="'+imgSrc+'" alt="Imagen del paciente" loading="lazy" onerror="var a=this.parentNode;a.className=\'adj-link\';a.textContent=\''+(mDrive?'📎 Abrir foto en Drive':'📎 Abrir imagen')+'\';"></a>';
+        html+='<a class="adj" data-media="'+dm+'" data-tipo="img" href="#" rel="noopener"><span class="adj-link">📷 Cargando foto…</span></a>';
       }else{
-        html+='<a class="adj-link" href="'+url+'" target="_blank" rel="noopener">📎 '+(mDrive?'Abrir en Drive':'Abrir archivo')+'</a>';
+        html+='<a class="adj-link" data-media="'+dm+'" data-tipo="file" href="#" rel="noopener">📎 Abrir archivo</a>';
       }
     }else{
       html+='<span class="cuerpo"></span>';
@@ -632,7 +632,30 @@ function pintarMensajes(msgs){
     cont.appendChild(div);
   });
   if(abajo) cont.scrollTop=cont.scrollHeight;
+  cargarMedios(cont);
   traducirPendientes(originales).then(cambio=>{ if(cambio) pintarMensajes(msgs); });
+}
+// Baja cada foto/archivo por el proxy autenticado y la muestra incrustada (blob).
+// No depende de estar logueado en el Drive: usa la sesión de la bandeja.
+async function cargarMedios(cont){
+  const els = cont.querySelectorAll('[data-media]:not([data-cargado])');
+  for(const el of els){
+    el.setAttribute('data-cargado','1');
+    const url = decodeURIComponent(el.getAttribute('data-media')||'');
+    const tipo = el.getAttribute('data-tipo');
+    try{
+      const r = await fetch(API+"/inbox/media?u="+encodeURIComponent(url), { headers:{ "Authorization":"Bearer "+ID_TOKEN }, cache:"no-store" });
+      if(!r.ok) throw new Error("http "+r.status);
+      const obj = URL.createObjectURL(await r.blob());
+      el.setAttribute('href', obj); el.setAttribute('target','_blank');
+      if(tipo==='img'){ el.innerHTML='<img src="'+obj+'" alt="Imagen del paciente" loading="lazy">'; }
+      else{ el.textContent='📎 Abrir archivo'; }
+    }catch(e){
+      el.className='adj-link';
+      el.textContent = (tipo==='img') ? '📎 No se pudo cargar la foto' : '📎 No se pudo abrir';
+      el.removeAttribute('href');
+    }
+  }
 }
 async function traducirPendientes(textos){
   const faltan=[...new Set(textos.filter(t=> t && !cacheTrad.has(t) && !pareceEspanol(t)))];
